@@ -41,14 +41,24 @@ if(privateKey === ""){
 }
 const WALLET = new ethers.Wallet(privateKey, provider);
 
-const UNI_CONTRACT_ADDRESS = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
-const UNI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/UniAbi.json").toString();
+
 const UNISWAP_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 const UNISWAP_ROUTER_ABI =  fs.readFileSync("./contracts/abis/UniswapV2RouterAbi.json").toString();
 const UNISWAP_ROUTER_CONTRACT = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, provider);
+
+const UNI_CONTRACT_ADDRESS = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
+const UNI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/UniAbi.json").toString();
 const UNI_CONTRACT = new ethers.Contract(UNI_CONTRACT_ADDRESS,UNI_CONTRACT_ABI,WALLET);
 
 
+const WETH_CONTRACT_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+const WETH_CONTRACT_ABI  = fs.readFileSync("./contracts/abis/WETHAbi.json").toString();
+const WETH_CONTRACT =  new ethers.Contract(WETH_CONTRACT_ADDRESS,WETH_CONTRACT_ABI,WALLET);
+
+
+const DAI_CONTRACT_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toString();
+const DAI_CONTRACT =  new ethers.Contract(DAI_CONTRACT_ADDRESS,DAI_CONTRACT_ABI,WALLET);
 
 function createDeadLine():number{
     return Math.floor(Date.now()/1000) + 60 * 20; // 20 minutes from the current Unix time
@@ -167,6 +177,27 @@ async function swapExactEthForTokens(token1:Token,token2:Token,amount:number,sli
 }
 
 
+
+/**
+ * erc20 token 合约授权给UniswapV2 router 合约amount 数量的token ,用于swap
+ * @param CONTRACT: erc20代币contract,用于调用授权函数(approve)
+ * @param amount token 合约授权给Router合约的数量
+ */
+async function apporve(CONTRACT:ethers.Contract,amount:number) {
+    try {
+        const approveTx = await CONTRACT.approve(UNISWAP_ROUTER_ADDRESS, ethers.utils.parseEther(amount.toString()));
+        const approveReceipt = await approveTx.wait();
+        console.log("approveTx:",approveTx);
+        console.log("approveReceipt:",approveReceipt);
+    } catch(e) {
+        console.log(e)
+    }
+    
+
+}
+
+
+
 /**
  * 输入精确的token数量换取目标token
  * @param token1 : 目标token
@@ -203,12 +234,16 @@ async function swapExactTokensForTokens(token1:Token,token2:Token,amount:number,
         const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
         console.log("slippage tolerance:",slippageTolerance.quotient.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
         
+
+        //WETH合约授权给Uniswapv2 router amount 数量的weth,用于swap
+        await apporve(DAI_CONTRACT,amount);
+
         const trade = new Trade(
             route,
             new TokenAmount(token2,amountIn.toString()),                                    //输入token d的数量，token2 这里指的是ETh
             TradeType.EXACT_INPUT                                                           //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
         );                                                                                  // information necessary to create a swap transaction.
-        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toString();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).raw;                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
         const amountOutMinHex = ethers.BigNumber.from(amountOutMin.toString());
         const path = [token2.address,token1.address];                                       // An array of token addresses
         const to = WALLET.address;                                                          // 20 minutes from the current Unix time
@@ -229,79 +264,43 @@ async function swapExactTokensForTokens(token1:Token,token2:Token,amount:number,
         // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
         // operations on Signer.
 
-        // const rawApproveTxn = await UNISWAP_ROUTER_CONTRACT.approve(WALLET.address,value);
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactTokensForTokens(
+            valueHex,
+            amountOutMinHex,
+            path,
+            to,
+            deadline,
+            {
+                gasLimit:ethers.utils.parseUnits('200000', 'wei')
+                // maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei"),
+                // nonce:nonce,
+            }
+        )
+        // Returns a Promise which resolves to the transaction.;
+        let sendTxn = (await WALLET).sendTransaction(rawTxn);
 
-        // let sendApproveTxn = (await WALLET).sendTransaction(rawApproveTxn);
-
-        // console.log("rawApproveTxn:",rawApproveTxn);
-        // console.log("sendApproeveTxn:",rawApproveTxn);
-
-        // const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactTokensForTokens(
-        //     amountIn,
-        //     amountOutMinHex,
-        //     path,
-        //     to,
-        //     deadline,
-        //     {
-        //         gasLimit:300000,
-        //         // maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei"),
-        //         // nonce:nonce,
-        //     }
-        // )
-        // // Returns a Promise which resolves to the transaction.;
-        // let sendTxn = (await WALLET).sendTransaction(rawTxn);
-
-        // // Resolves to the TransactionReceipt once the transaction has been included in the chain for x confirms blocks.
-        // let reciept = (await sendTxn).wait()
+        // Resolves to the TransactionReceipt once the transaction has been included in the chain for x confirms blocks.
+        let reciept = (await sendTxn).wait()
 
 
-        // // Logs the information about the transaction it has been mined.
-        // if (reciept) {
-        //     console.log(" - Transaction is mined - " + '\n' +
-        //         "Transaction Hash:", (await sendTxn).hash +
-        //         '\n' + "Block Number: " +
-        //         (await reciept).blockNumber + '\n' +
-        //         "Navigate to https://etherscan.io/tx/" +
-        //         (await sendTxn).hash, "to see your transaction")
-        //     console.log("sendTxn:",sendTxn);
-        //     console.log("reciept:",reciept);
-        // } else {
-        //     console.log("Error submitting transaction")
-        // }
+        // Logs the information about the transaction it has been mined.
+        if (reciept) {
+            console.log(" - Transaction is mined - " + '\n' +
+                "Transaction Hash:", (await sendTxn).hash +
+                '\n' + "Block Number: " +
+                (await reciept).blockNumber + '\n' +
+                "Navigate to https://etherscan.io/tx/" +
+                (await sendTxn).hash, "to see your transaction")
+            console.log("sendTxn:",sendTxn);
+            console.log("reciept:",reciept);
+        } else {
+            console.log("Error submitting transaction")
+        }
 
     }catch (e)
     {
         console.log(e);
     }
-}
-
-/**
- * erc20 token 授权给UniswapV2 router 合约amount 数量的token ,用于swap
- * @param amount token 合约授权给Router合约的数量
- */
-async function apporve(amount:number) {
-    // try {
-    //     const DAIABI = ['function approve(address spender, uint256 value) returns (bool)'];
-    //     const DAIContract = new ethers.Contract(UNI_CONTRACT_ADDRESS, DAIABI, WALLET);
-    //     var amountStr=amount.toString();
-    //     const approveTx = await DAIContract.approve(UNISWAP_ROUTER_ADDRESS, ethers.utils.parseEther(amountStr));
-    //     const approveReceipt = await approveTx.wait();
-    //     console.log("approveTx:",approveTx);
-    //     console.log("approveReceipt:",approveReceipt);
-    // } catch(e) {
-    //     console.log(e)
-    // }
-
-    try {
-        const approveTx = await UNI_CONTRACT.approve(UNISWAP_ROUTER_ADDRESS, ethers.utils.parseEther(amount.toString()));
-        const approveReceipt = await approveTx.wait();
-        // console.log("approveTx:",approveTx);
-        // console.log("approveReceipt:",approveReceipt);
-    } catch(e) {
-        console.log(e)
-    }
-    
-
 }
 
 /**
@@ -341,21 +340,8 @@ async function swapExactTokensForETH(token1:Token,token2:Token,amount:number,sli
 
         const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
         console.log("slippage tolerance:",slippageTolerance.quotient.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
-        
 
-        // 调用UNI合约的授权函数，授权给UniswapRouter 合约amounIn 数量的UNI
-        // let rawApproveTx = await UNI_CONTRACT.populateTransaction.approve(UNISWAP_ROUTER_ADDRESS,amountIn);
-        // console.log("rawApproveTx:",rawApproveTx);
-
-        // let sendApproveTx = await WALLET.sendTransaction(rawApproveTx);
-
-        // let approveReciept = await sendApproveTx.wait();
-
-        // console.log("rawApproveTx:",rawApproveTx);
-        // console.log("sendApproveTx:",sendApproveTx);
-        // console.log("approveReciept:",approveReciept);
-
-        await apporve(amount);
+        await apporve(UNI_CONTRACT,amount);
         
         
         const trade = new Trade(
@@ -429,6 +415,17 @@ async function swapExactTokensForETH(token1:Token,token2:Token,amount:number,sli
 }
 
 
+async function testWei(){
+    let value = ethers.utils.parseUnits("3","ether");     // 大单位转小单位，gwei 转wei
+    let value_ether = ethers.utils.formatUnits(value);   // 
+    console.log("value:",value.toString());
+    console.log("value_ether:",value_ether);
+    let nonce = await WALLET.getTransactionCount();
+    console.log("nonce:",nonce);
+ 
+ }
+
+
 async function testUniswapV2RouterV2(){
 
     console.log("BlockNumber:",await provider.getBlockNumber());
@@ -437,36 +434,39 @@ async function testUniswapV2RouterV2(){
         "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
         18
     )
-    // ETH 兑 UNI
+    const DAI = new Token(
+        ChainId.MAINNET,
+        "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        18
+    )
+
+    // ETH 兑 UNI,swapExactEthForTokens
     // console.time("swapExactEthForTokens");
-    // swapExactEthForTokens(UNI,WETH[UNI.chainId],.001)  // first token we want,second token we have ,the amount we want;
+    // swapExactEthForTokens(UNI,WETH[UNI.chainId],.001)  // first token we want,second token we have ,amount of input/second token;
     // console.timeEnd("swapExactEthForTokens");
 
-    // ETH 对 UNI
-    // console.time("swapExactTokensForTokens");
-    // swapExactTokensForTokens(UNI,WETH[UNI.chainId],.001)  // first token we want,second token we have ,the amount we want;
-    // console.timeEnd("swapExactTokensForTokens");
+    // ETH 兑 DAI,swapExactEthForTokens
+    // console.time("swapExactEthForTokens");
+    // swapExactEthForTokens(DAI,WETH[DAI.chainId],.001)  // first token we want,second token we have ,amount of input/second token;
+    // console.timeEnd("swapExactEthForTokens");
+    
+
+    // DAI 兑 UNI,swapExactTokensForTokens
+    console.time("swapExactTokensForTokens");
+    swapExactTokensForTokens(UNI,DAI,1)  // first token we want,second token we have ,amount of input/second token;;
+    console.timeEnd("swapExactTokensForTokens");
 
 
-    // UNI 兑 ETH
-    console.time("swapExactEthForTokens");
-    swapExactTokensForETH(WETH[UNI.chainId],UNI,.1)  // first token we want,second token we have ,the amount we want;
-    console.timeEnd("swapExactEthForTokens");
+    // UNI 兑 ETH,swapExactTokensForETH
+    // console.time("swapExactTokensForETH");
+    // swapExactTokensForETH(WETH[UNI.chainId],UNI,.05762)  // first token we want,second token we have ,amount of input/second token;;
+    // console.timeEnd("swapExactTokensForETH");
 
 
  
 }
 
 
-async function testWei(){
-   let value = ethers.utils.parseUnits("3","ether");     // 大单位转小单位，gwei 转wei
-   let value_ether = ethers.utils.formatUnits(value);   // 
-   console.log("value:",value.toString());
-   console.log("value_ether:",value_ether);
-   let nonce = await WALLET.getTransactionCount();
-   console.log("nonce:",nonce);
-
-}
 
 async function main(){
 
