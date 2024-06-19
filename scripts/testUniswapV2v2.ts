@@ -25,10 +25,6 @@ const ETHMAINNET_PRIVATE_KEY:string = process.env.ETHMAINNET_PRIVATE_KEY || "";
 const API_URL = ETHMAINNET_API_URL;
 const WS_URL:string = ETHMAINNET_WS_URL || "";
 
-const addressWETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-
-const addressUniswapV2 = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
-
 const provider = new ethers.providers.getDefaultProvider(API_URL);
 
 
@@ -57,7 +53,7 @@ const WETH_CONTRACT =  new ethers.Contract(WETH_CONTRACT_ADDRESS,WETH_CONTRACT_A
 
 
 const DAI_CONTRACT_ADDRESS = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toString();
+const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toslippageToleranceString();
 const DAI_CONTRACT =  new ethers.Contract(DAI_CONTRACT_ADDRESS,DAI_CONTRACT_ABI,WALLET);
 
 function createDeadLine():number{
@@ -129,6 +125,7 @@ async function swapExactEthForTokens(token1:Token,token2:Token,amount:number,sli
         const valueHex = await ethers.BigNumber.from(value.toString());
         // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
 
+        console.log("amountOutMin 目标token 的最小数量:",amountOutMin.toString());
         console.log("amountOutMin 目标token 的最小数量:",ethers.utils.formatUnits(amountOutMin.toString()));
         console.log("path:",path);
         console.log("to:",to);
@@ -139,36 +136,36 @@ async function swapExactEthForTokens(token1:Token,token2:Token,amount:number,sli
         // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
         // operations on Signer.
 
-        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(
-            amountOutMinHex,
-            path,
-            to,
-            deadline,
-            {
-                value:valueHex,
-                maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei"),
-            }
-        )
-        // Returns a Promise which resolves to the transaction.;
-        let sendTxn = (await WALLET).sendTransaction(rawTxn);
+        // const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(
+        //     amountOutMinHex,
+        //     path,
+        //     to,
+        //     deadline,
+        //     {
+        //         value:valueHex,
+        //         maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei"),
+        //     }
+        // )
+        // // Returns a Promise which resolves to the transaction.;
+        // let sendTxn = (await WALLET).sendTransaction(rawTxn);
 
-        // Resolves to the TransactionReceipt once the transaction has been included in the chain for x confirms blocks.
-        let reciept = (await sendTxn).wait()
+        // // Resolves to the TransactionReceipt once the transaction has been included in the chain for x confirms blocks.
+        // let reciept = (await sendTxn).wait()
 
 
-        // Logs the information about the transaction it has been mined.
-        if (reciept) {
-            console.log(" - Transaction is mined - " + '\n' +
-                "Transaction Hash:", (await sendTxn).hash +
-                '\n' + "Block Number: " +
-                (await reciept).blockNumber + '\n' +
-                "Navigate to https://etherscan.io/tx/" +
-                (await sendTxn).hash, "to see your transaction")
-            console.log("sendTxn:",sendTxn);
-            console.log("reciept:",reciept);
-        } else {
-            console.log("Error submitting transaction")
-        }
+        // // Logs the information about the transaction it has been mined.
+        // if (reciept) {
+        //     console.log(" - Transaction is mined - " + '\n' +
+        //         "Transaction Hash:", (await sendTxn).hash +
+        //         '\n' + "Block Number: " +
+        //         (await reciept).blockNumber + '\n' +
+        //         "Navigate to https://etherscan.io/tx/" +
+        //         (await sendTxn).hash, "to see your transaction")
+        //     console.log("sendTxn:",sendTxn);
+        //     console.log("reciept:",reciept);
+        // } else {
+        //     console.log("Error submitting transaction")
+        // }
 
     }catch (e)
     {
@@ -541,19 +538,19 @@ async function testUniswapV2RouterV2(){
     console.log("BlockNumber:",await provider.getBlockNumber());
     const UNI = new Token(
         ChainId.MAINNET,
-        "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+        UNI_CONTRACT_ADDRESS,
         18
     )
     const DAI = new Token(
         ChainId.MAINNET,
-        "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        DAI_CONTRACT_ADDRESS,
         18
     )
 
     // ETH 兑 UNI,swapExactEthForTokens
-    // console.time("swapExactEthForTokens");
-    // swapExactEthForTokens(UNI,WETH[UNI.chainId],.001)  // first token we want,second token we have ,amount of input/second token;
-    // console.timeEnd("swapExactEthForTokens");
+    console.time("swapExactEthForTokens");
+    swapExactEthForTokens(UNI,WETH[UNI.chainId],.001)  // first token we want,second token we have ,amount of input/second token;
+    console.timeEnd("swapExactEthForTokens");
 
     // ETH 兑 DAI,swapExactEthForTokens
     // console.time("swapExactEthForTokens");
@@ -574,9 +571,9 @@ async function testUniswapV2RouterV2(){
 
     // DAI 兑 UNI,swapExactTokensForTokensSupportingFeeOnTransferTokens 
     // txHaxh :0x80012e1707dd30f39f76a04f8035e5a115ccb0e64bce3eef0a3b0706cd90561b
-    console.time("swapExactTokensForTokensSupportingFeeOnTransferTokens");
-    swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,1)  // first token we want,second token we have ,amount of input/second token;;
-    console.timeEnd("swapExactTokensForTokensSupportingFeeOnTransferTokens");
+    // console.time("swapExactTokensForTokensSupportingFeeOnTransferTokens");
+    // swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,1)  // first token we want,second token we have ,amount of input/second token;;
+    // console.timeEnd("swapExactTokensForTokensSupportingFeeOnTransferTokens");
 
  
 }
