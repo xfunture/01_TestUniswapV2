@@ -1,8 +1,9 @@
 import {ChainId,Token,WETH9,CurrencyAmount,TradeType,Percent} from "@uniswap/sdk-core";
 import {Pair,Route,Trade} from "@uniswap/v2-sdk";
-import { ethers, providers } from 'ethers';
+import { ethers, providers, BigNumberish } from 'ethers';
 import * as fs from 'fs';
 import { getAddress } from 'ethers/lib/utils';
+import { Rounding } from "@dynamic-amm/sdk";
 require("dotenv").config()
 
 
@@ -108,11 +109,46 @@ async function createPair(token0:Token,token1:Token):Promise<Pair>{
     return pair;
 }
 
-
-
-async function main() {
-
-    // Create DAI token
+/**
+ * 测试在UniswapV2 交换代币的完成流程
+ * 包含直接交换，间接交换
+ * swap的完整过程如下：
+ * 1. 创建Token对象
+ * 2. 创建Pair 对象
+ *    pair对象规定了交易的输入token和输出token，pair对象第一个值指的是输出token（目标token）,第二个值指的是输入token
+ * 3. 创建Route 路由对象
+ *    路由对象可以包含一个或多个pair,规定了输入代币到输出代币的完整路径
+ *      constructor(pairs: Pair[], input: TInput, output: TOutput)
+ * 
+ * 4. 创建Trade 交易对象
+ *    由交易路由(trade) 创建的Trade 对象，trade 并不能直接发送交易，但是可以计算进行出安全交易相关的参数
+ *    输入参数如下：
+ *      交易量
+ *      交易的滑点容差(slippage tolerance)
+ *      交易类型TradeType，有两种交易类型    EXACT_INPUT = 0,EXACT_OUTPUT = 1 对应Swap函数的精确输入token交易量和精确输出token交易量
+ *    输出参数如下：
+ *      执行价格(execution price)
+ *      计算最小的输出代币数量(amountOutMin) 
+ *      计算最大的输入代币数量(amountInMax)     
+ *      
+ *
+ *      
+ * 5. 创建交易参数
+ *    contract.populateTransaction.swapExactETHForTokens
+ *    swapExactETHForTokens 是UniswapV2 router 中的一个交换代币的函数
+ *    Exact在前规定的是输入代币的数量，Exact在后规定的是输出代币的数量
+ *    一个UniswapV2 的函数，如果有payable 关键字，表示该函数可以接收ETH
+ *    因此在调用的SwapExactETHForTokens 的时候需要额外增加一个参数:value
+ *    SwapExactETHForTokens 函数没有输入代币的数量，由value 规定输入代币的数量
+ *    
+ *      从步骤1到步骤4 只是为了获取amountOutMin 这个参数,1到4这个过程能否直接省略，
+ *      直接调用合约中的getAmountOut 函数计算 最小的代币输出量
+ * 
+ *    
+ *      
+ */
+async function firstDemo(){
+ // Create DAI token
     // const chainId = ChainId.MAINNET;
     const chainId = 31337;
     const decimals = 18
@@ -160,7 +196,7 @@ async function main() {
     // Execution Price
     console.log("\n\n------------------------------Execution Price-----------------------------------------")
 
-    const amountIn = ethers.utils.parseEther("0.001").toString();
+    const amountIn = ethers.utils.parseEther("0.1").toString();
     console.log("amountIn wei:",amountIn);
     console.log("amountIn ether:",ethers.utils.formatEther(amountIn));
     const DAIWETHTrade = new Trade(DAIWETHRoute,CurrencyAmount.fromRawAmount(weth,amountIn),TradeType.EXACT_INPUT);
@@ -214,14 +250,268 @@ async function main() {
 
     let reciept = await sendTxn.wait();
 
-    console.log("rawTxn:",rawTxn);
-    console.log("sendTxn:",sendTxn);
-    console.log("reciept:",reciept);
+    console.log("\nrawTxn:\n",rawTxn);
+    console.log("\nsendTxn:\n",sendTxn);
+    console.log("\nreciept:\n",reciept);
+
+}
 
 
 
+/**
+ * erc20 token 合约授权给UniswapV2 router 合约amount 数量的token ,用于swap
+ * @param CONTRACT: erc20代币contract,用于调用授权函数(approve)
+ * @param amount token 合约授权给Router合约的数量
+ */
+async function apporve(CONTRACT:ethers.Contract,amount:number) {
+    try {
+        const approveTx = await CONTRACT.approve(UNISWAP_ROUTER_ADDRESS, ethers.utils.parseEther(amount.toString()));
+        const approveReceipt = await approveTx.wait();
+        console.log("approveTx:",approveTx);
+        console.log("approveReceipt:",approveReceipt);
+    } catch(e) {
+        console.log(e)
+    }
+    
+}
+
+/**
+ * 指定精确ETH的数量兑换目标token
+ * @param token1 :输出token
+ * @param token2 :输入token
+ * @param amount :输入token 的数量
+ * @param slippage 
+ */
+
+async function swapExactEthForTokens(token1:Token,token2:Token,amount:string,slippage = "50"){
+    try{
+        const pair = await createPair(token1,token2);                                       //creating instance of a pair
+        const route = await new Route([pair],token2,token1);                                // a a full specified path from input token to output token
+        const midprice = route.midPrice.toSignificant();
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.toSignificant()}`,);
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.invert().toSignificant()}`,);
+
+        const amountIn = ethers.utils.parseEther(amount).toString();                        // helper function to convert ETH to Wei
+        console.log("amountIn ether:",ethers.utils.formatEther(amountIn));
+
+        const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
+        console.log("slippage tolerance:",slippageTolerance.numerator.toString(),slippageTolerance.denominator.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
+        
+        const trade = new Trade(route,CurrencyAmount.fromRawAmount(token2,amountIn),
+        TradeType.EXACT_INPUT);                                                             //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
+        console.log("Direct Execution Price:",trade.executionPrice.toSignificant());
 
 
+
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMinHex = ethers.utils.parseUnits(amountOutMin).toHexString();
+        const path = [token2.address,token1.address];                                       // An array of token addresses
+        const to = WALLET.address;                                                          // 20 minutes from the current Unix time
+        const deadline = createDeadLine();
+        const value = trade.inputAmount.toExact();                          
+        const valueHex = ethers.utils.parseUnits(value).toHexString();
+        // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
+
+        // console.log("UniswapV2 route address:",UNISWAP_ROUTER_ADDRESS);
+        // console.log("slippageTolerance:",slippageTolerance.toSignificant());
+        console.log("amountOutMin:",amountOutMin);
+        // console.log("amountOutMinHex:",amountOutMinHex);
+    
+    
+        // console.log("path:",path);
+        // console.log("to:",to);
+        // console.log("deadline:",deadline);
+        // console.log("amountIn:",value);
+        // console.log("valueHex:",valueHex);
+
+        // Return a copy of transactionRequest, The default implementation calls checkTransaction and 
+        // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
+        // operations on Signer.
+        
+
+        // send transaction
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(
+            amountOutMinHex,
+            path,
+            to,
+            deadline,
+            {
+                value:valueHex,
+                maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            }
+        );
+
+        let sendTxn = await WALLET.sendTransaction(rawTxn);
+
+        let reciept = await sendTxn.wait();
+
+        // console.log("\nrawTxn:\n",rawTxn);
+        // console.log("\nsendTxn:\n",sendTxn);
+        // console.log("\nreciept:\n",reciept);
+        let gasUsed = reciept.cumulativeGasUsed;
+        let gasPrice = reciept.effectiveGasPrice;
+        let transferFeeEther = gasUsed.mul(gasPrice);
+        // let transferFeeDollar = transferFeeEther.mul(3500);    
+        let txhash = reciept.transactionHash;
+        console.log(`transactionHash:${txhash}\ntransferFeeEther:${ethers.utils.formatEther(transferFeeEther)} \nmidprice:${midprice}\n\n`);
+       
+
+    }catch (e)
+    {
+        console.log(e);
+    }
+}
+
+
+
+/**
+ * 指定精确token2的数量兑换目标token1
+ * @param token1 :输出token
+ * @param token2 :输入token
+ * @param amount :输入token 的数量
+ * @param slippage 
+ */
+
+async function swapExactTokensForTokens(token1:Token,token2:Token,amount:string,slippage = "50"){
+    try{
+        const pair = await createPair(token1,token2);                                       //creating instance of a pair
+        const route = await new Route([pair],token2,token1);                                // a a full specified path from input token to output token
+        const midprice = route.midPrice.toSignificant();
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.toSignificant()}`,);
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.invert().toSignificant()}`,);
+
+        const amountIn = ethers.utils.parseEther(amount).toString();                        // helper function to convert ETH to Wei
+        console.log("amountIn wei:",amountIn);
+        console.log("amountIn ether:",ethers.utils.formatEther(amountIn));
+
+        const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
+        console.log("slippage tolerance:",slippageTolerance.quotient.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
+        
+        const trade = new Trade(route,CurrencyAmount.fromRawAmount(token2,amountIn),
+        TradeType.EXACT_INPUT);                                                             //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
+        console.log("Direct Execution Price:",trade.executionPrice.toSignificant());
+
+
+
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMinHex = ethers.utils.parseUnits(amountOutMin).toHexString();
+        const path = [token2.address,token1.address];                                       // An array of token addresses
+        const to = WALLET.address;                                                          // 20 minutes from the current Unix time
+        const deadline = createDeadLine();
+        const value = trade.inputAmount.toExact();                          
+        const valueHex = ethers.utils.parseUnits(value).toHexString();
+        // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
+
+        console.log("UniswapV2 route address:",UNISWAP_ROUTER_ADDRESS);
+        console.log("slippageTolerance:",slippageTolerance.toSignificant());
+        console.log("amountOutMin:",amountOutMin);
+        console.log("amountOutMinHex:",amountOutMinHex);
+    
+    
+        console.log("path:",path);
+        console.log("to:",to);
+        console.log("deadline:",deadline);
+        console.log("value:",value);
+        console.log("valueHex:",valueHex);
+
+        // Return a copy of transactionRequest, The default implementation calls checkTransaction and 
+        // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
+        // operations on Signer.
+        
+
+        // send transaction
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(
+            amountOutMinHex,
+            path,
+            to,
+            deadline,
+            {
+                value:valueHex,
+                maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            }
+        );
+
+        let sendTxn = await WALLET.sendTransaction(rawTxn);
+
+        let reciept = await sendTxn.wait();
+
+        // console.log("\nrawTxn:\n",rawTxn);
+        // console.log("\nsendTxn:\n",sendTxn);
+        // console.log("\nreciept:\n",reciept);
+        let gasUsed = reciept.cumulativeGasUsed;
+        let gasPrice = reciept.effectiveGasPrice;
+        let transferFeeEther = gasUsed.mul(gasPrice);
+        // let transferFeeDollar = transferFeeEther.mul(3500);    
+        let txhash = reciept.transactionHash;
+        console.log(`transactionHash:${txhash}\ntransferFeeEther:${ethers.utils.formatEther(transferFeeEther)} \nmidprice:${midprice}`);
+       
+
+    }catch (e)
+    {
+        console.log(e);
+    }
+}
+
+async function getERC20Balance(myAddress:string,CONTRACT_ADDRESS:string,CONTRACT_ABI:string):Promise<number>{
+
+    // const erc20Abi =  [
+    //     "uint8   public constant decimals",
+    //     "function balanceOf(address) public view returns(uint)",
+    //     "function deposit() public payable",
+    //     "function transfer(address, uint) public returns (bool)",
+    //     "function withdraw(uint) public",
+    // ];
+    const contract = new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,PROVIDER);
+    // const symbol = await contract.name();
+    const decimals = await contract.decimals();
+    const balance = await contract.balanceOf(myAddress)
+    // console.log("symbol:",symbol);
+    // console.log("decimals:",decimals);
+    // console.log("balance:",ethers.utils.formatUnits(balance,decimals));
+    return balance;
+}
+
+
+async function main() {
+
+
+    // await firstDemo();
+
+
+    const chainId = 31337;
+    const decimals = 18
+    const DAI = new Token(chainId,DAI_CONTRACT_ADDRESS,18,'DAI','Dai Stablecoin');
+    const weth:Token = new Token(chainId,WETH_CONTRACT_ADDRESS,18,'WETH','Wrapped Ether');
+    const USDC:Token = new Token(chainId,USDC_CONTRACT_ADDRESS,6,"USDC");
+    const UNI:Token = new Token(chainId,UNI_CONTRACT_ADDRESS,18,"UNI");
+    console.log(`The chainId is ${chainId}`);
+
+
+    let beforeBalance = await PROVIDER.getBalance(WALLET.address);
+    // let beforeDaiBalance = await getERC20Balance(WALLET.address,DAI.address,DAI_CONTRACT_ABI);
+    // let beforeUniBalance = await getERC20Balance(WALLET.address,UNI.address,UNI_CONTRACT_ABI);
+
+
+
+    await swapExactEthForTokens(DAI,weth,"0.01");
+    // await swapExactEthForTokens(UNI,weth,"0.01");
+
+
+    console.log("before swap ether:",ethers.utils.formatEther(beforeBalance.toString()))
+    // console.log("before swap DAI balance:",ethers.utils.formatUnits(beforeDaiBalance,18));
+    // console.log("before swap UNI balance:",ethers.utils.formatUnits(beforeUniBalance,18));
+
+
+    let balance = await PROVIDER.getBalance(WALLET.address);
+    let daiBalance = await getERC20Balance(WALLET.address,DAI.address,DAI_CONTRACT_ABI);
+    // let uniBalance = await getERC20Balance(WALLET.address,UNI.address,UNI_CONTRACT_ADDRESS);
+    // let wethBalance = await getERC20Balance(WALLET.address,weth.address,WETH_CONTRACT_ABI);
+    console.log("after swap ether:",ethers.utils.formatEther(balance.toString()))
+    // console.log("after swap DAI balance:",ethers.utils.formatUnits(daiBalance,18));
+    // console.log("after swap UNI balance:",ethers.utils.formatUnits(uniBalance,18));
+
+
+   
 
     
 }
