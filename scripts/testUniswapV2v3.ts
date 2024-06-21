@@ -794,22 +794,22 @@ async function main() {
 
 
 
-    // await swapExactEthForTokens(UNI,weth,"0.01");
-    // await swapExactEthForTokens(DAI,weth,"0.01");
+    await swapExactEthForTokens(UNI,weth,"0.01");
+    await swapExactEthForTokens(DAI,weth,"0.01");
 
 
-    // await swapExactTokensForETH(weth,DAI,"50",DAI_CONTRACT);
-    // await swapExactTokensForETH(weth,UNI,"10",UNI_CONTRACT);
+    await swapExactTokensForETH(weth,DAI,"50",DAI_CONTRACT);
+    await swapExactTokensForETH(weth,UNI,"10",UNI_CONTRACT);
 
 
-    // await swapExactTokensForTokens(DAI,UNI,"1",UNI_CONTRACT);
-    // await swapExactTokensForTokens(UNI,DAI,"100",DAI_CONTRACT);
+    await swapExactTokensForTokens(DAI,UNI,"1",UNI_CONTRACT);
+    await swapExactTokensForTokens(UNI,DAI,"100",DAI_CONTRACT);
 
-    // await swapExactTokensForTokensSupportingFeeOnTransferTokens(DAI,UNI,"1",UNI_CONTRACT);
-    // await swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,"100",DAI_CONTRACT);
+    await swapExactTokensForTokensSupportingFeeOnTransferTokens(DAI,UNI,"1",UNI_CONTRACT);
+    await swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,"100",DAI_CONTRACT);
 
 
-    await swapTokensForExactETH(weth,DAI,"0.0001",UNI_CONTRACT,"100");
+    // await swapTokensForExactETH(weth,DAI,"0.0001",UNI_CONTRACT,"100");
 
 
     console.log("before swap ether:",ethers.utils.formatEther(beforeBalance.toString()))
