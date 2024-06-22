@@ -30,6 +30,7 @@ const config: HardhatUserConfig = {
 
 export default config;
 module.exports = {
+  defaultNetwork:"local",
   solidity: "0.8.24",
   gasReporter: {
     enabled: true,
@@ -44,9 +45,19 @@ module.exports = {
       url:ALCHEMY_API_URL,
       accounts:[ALCHEMY_PRIVATE_KEY],
     },
-    forking: {
-      url: ALCHEMY_API_URL,
-      blockNumber: 14390000
+    local:{
+      url:"http://127.0.0.1:8545"
     },
+    MAINNET:
+    {
+      url:ETHMAINNET_API_URL,
+      accounts:[ETHMAINNET_PRIVATE_KEY]
+    }
+  },
+  hardhat: {
+    forking: {
+      url: ETHMAINNET_API_URL,
+      blockNumber: 20145857
+    }
   }
 };

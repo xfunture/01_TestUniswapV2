@@ -1,23 +1,25 @@
 {
   "name": "01_testuniswapv2",
   "version": "1.0.0",
-  "description": "",
+  "description": "This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.",
   "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.5"
-  },
   "dependencies": {
-    "@dynamic-amm/sdk": "^3.0.33",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@uniswap/sdk": "^3.0.3",
+    "@uniswap/sdk-core": "^5.3.1",
     "@uniswap/v2-sdk": "^4.4.1",
     "dotenv": "^16.4.5",
-    "ethers": "5.7"
+    "ethers": "5.7",
+    "hardhat": "^2.22.5"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0"
   }
 }

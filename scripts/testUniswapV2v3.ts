@@ -569,6 +569,94 @@ async function swapExactTokensForTokensSupportingFeeOnTransferTokens(token1:Toke
 
 
 /**
+ * 指定精确ETH 数量兑换token，支持转账时扣除手续费
+ * @param token1 :输出token
+ * @param token2 :输入token，ETH
+ * @param amount :输入token 的数量
+ * @param slippage 
+ */
+
+async function swapExactETHForTokensSupportingFeeOnTransferTokens(token1:Token,token2:Token,amount:string,slippage = "50"){
+    try{
+        const pair = await createPair(token1,token2);                                       //creating instance of a pair
+        const route = await new Route([pair],token2,token1);                                // a a full specified path from input token to output token
+        const midprice = route.midPrice.toSignificant();
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.toSignificant()}`,);
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.invert().toSignificant()}`,);
+
+        const amountIn = ethers.utils.parseEther(amount).toString();                        // helper function to convert ETH to Wei
+        console.log("amountIn:",ethers.utils.formatEther(amountIn));
+
+        const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
+        console.log("slippage tolerance:",slippageTolerance.numerator.toString(),slippageTolerance.denominator.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
+        
+        const trade = new Trade(route,CurrencyAmount.fromRawAmount(token2,amountIn),
+        TradeType.EXACT_INPUT);                                                             //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
+        console.log("Direct Execution Price:",trade.executionPrice.toSignificant());
+
+
+
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMinHex = ethers.utils.parseUnits(amountOutMin).toHexString();
+        const path = [token2.address,token1.address];                                       // An array of token addresses
+        const to = WALLET.address;                                                          // 20 minutes from the current Unix time
+        const deadline = createDeadLine();
+        const value = trade.inputAmount.toExact();                          
+        const valueHex = ethers.utils.parseUnits(value).toHexString();
+        // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
+
+        // console.log("UniswapV2 route address:",UNISWAP_ROUTER_ADDRESS);
+        // console.log("slippageTolerance:",slippageTolerance.toSignificant());
+        console.log("amountOutMin:",amountOutMin);
+        // console.log("amountOutMinHex:",amountOutMinHex);
+    
+    
+        // console.log("path:",path);
+        // console.log("to:",to);
+        // console.log("deadline:",deadline);
+        // console.log("amountIn:",value);
+        // console.log("valueHex:",valueHex);
+
+        // Return a copy of transactionRequest, The default implementation calls checkTransaction and 
+        // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
+        // operations on Signer.
+        
+
+        // send transaction
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokensSupportingFeeOnTransferTokens(
+            amountOutMinHex,
+            path,
+            to,
+            deadline,
+            {
+                value:valueHex,
+                maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            }
+        );
+
+        let sendTxn = await WALLET.sendTransaction(rawTxn);
+
+        let reciept = await sendTxn.wait();
+
+        // console.log("\nrawTxn:\n",rawTxn);
+        // console.log("\nsendTxn:\n",sendTxn);
+        // console.log("\nreciept:\n",reciept);
+        let gasUsed = reciept.cumulativeGasUsed;
+        let gasPrice = reciept.effectiveGasPrice;
+        let transferFeeEther = gasUsed.mul(gasPrice);
+        // let transferFeeDollar = transferFeeEther.mul(3500);    
+        let txhash = reciept.transactionHash;
+        console.log(`swap transactionHash:${txhash}\ntransferFeeEther:${ethers.utils.formatEther(transferFeeEther)} \nmidprice:${midprice}\n\n`);
+       
+
+    }catch (e)
+    {
+        console.log(e);
+    }
+}
+
+
+/**
  * 指定精确token的数量兑换目标ETH
  * @param token1 :输出token
  * @param token2 :WETH
@@ -577,6 +665,99 @@ async function swapExactTokensForTokensSupportingFeeOnTransferTokens(token1:Toke
  */
 
 async function swapExactTokensForETH(token1:Token,token2:Token,amount:string,token2Contract:ethers.Contract,slippage = "50",){
+    try{
+        console.log(`Swap target token:${token1.symbol} input token:${token2.symbol}`);
+        const pair = await createPair(token1,token2);                                       //creating instance of a pair
+        const route = await new Route([pair],token2,token1);                                // a a full specified path from input token to output token
+        const midprice = route.midPrice.toSignificant();
+        console.log(`Direct Swap ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.toSignificant()}`,);
+        console.log(`Direct Swap ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.invert().toSignificant()}`,);
+
+        const amountIn = ethers.utils.parseEther(amount).toString();                        // helper function to convert ETH to Wei
+        console.log("amountIn ether:",ethers.utils.formatEther(amountIn));
+
+        const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
+        console.log("slippage tolerance:",slippageTolerance.numerator.toString(),slippageTolerance.denominator.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
+        
+        const trade = new Trade(route,CurrencyAmount.fromRawAmount(token2,amountIn),
+        TradeType.EXACT_INPUT);                                                             //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
+        console.log("Direct Execution Price:",trade.executionPrice.toSignificant());
+
+
+
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMinHex = ethers.utils.parseUnits(amountOutMin).toHexString();
+        const path = [token2.address,token1.address];                                       // An array of token addresses
+        const to = WALLET.address;                                                          // 20 minutes from the current Unix time
+        const deadline = createDeadLine();
+        const value = trade.inputAmount.toExact();                          
+        const valueHex = ethers.utils.parseUnits(value).toHexString();
+        // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
+
+        // console.log("UniswapV2 route address:",UNISWAP_ROUTER_ADDRESS);
+        // console.log("slippageTolerance:",slippageTolerance.toSignificant());
+        console.log("amountOutMin:",amountOutMin);
+        // console.log("amountOutMinHex:",amountOutMinHex);
+    
+    
+        // console.log("path:",path);
+        // console.log("to:",to);
+        // console.log("deadline:",deadline);
+        // console.log("amountIn:",value);
+        // console.log("valueHex:",valueHex);
+
+        // Return a copy of transactionRequest, The default implementation calls checkTransaction and 
+        // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
+        // operations on Signer.
+        
+        // approve
+        await approve(token2Contract,amount);
+
+        // send transaction
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactTokensForETH(
+            valueHex,
+            amountOutMinHex,
+            path,
+            to,
+            deadline,
+            {
+                gasLimit:ethers.utils.parseUnits('200000', 'wei'),
+                maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            }
+        );
+
+        let sendTxn = await WALLET.sendTransaction(rawTxn);
+
+        let reciept = await sendTxn.wait();
+
+        // console.log("\nrawTxn:\n",rawTxn);
+        // console.log("\nsendTxn:\n",sendTxn);
+        // console.log("\nreciept:\n",reciept);
+        let gasUsed = reciept.cumulativeGasUsed;
+        let gasPrice = reciept.effectiveGasPrice;
+        let transferFeeEther = gasUsed.mul(gasPrice);
+        // let transferFeeDollar = transferFeeEther.mul(3500);    
+        let txhash = reciept.transactionHash;
+        console.log(`transactionHash:${txhash}\ntransferFeeEther:${ethers.utils.formatEther(transferFeeEther)} \nmidprice:${midprice}\n\n`);
+       
+
+    }catch (e)
+    {
+        console.log(e);
+    }
+}
+
+
+
+/**
+ * 指定精确token的数量兑换目标ETH，在转账时扣除手续费
+ * @param token1 :输出token
+ * @param token2 :WETH
+ * @param amount :输入token 的数量
+ * @param slippage 
+ */
+
+async function swapExactTokensForETHSupportingFeeOnTransferTokens(token1:Token,token2:Token,amount:string,token2Contract:ethers.Contract,slippage = "50",){
     try{
         console.log(`Swap target token:${token1.symbol} input token:${token2.symbol}`);
         const pair = await createPair(token1,token2);                                       //creating instance of a pair
@@ -743,8 +924,97 @@ async function swapTokensForExactETH(token1:Token,token2:Token,amount:string,tok
             deadline,
             {
                 gasLimit:ethers.utils.parseUnits('200000', 'wei'),
-                maxPriorityFeePerGas:ethers.utils.parseUnits("5","gwei"),
-                maxFeePerGas:ethers.utils.parseUnits("5","gwei"),
+                // maxPriorityFeePerGas:ethers.utils.parseUnits("5","gwei"),
+                // maxFeePerGas:ethers.utils.parseUnits("5","gwei"),
+            }
+        );
+
+        let sendTxn = await WALLET.sendTransaction(rawTxn);
+
+        let reciept = await sendTxn.wait();
+
+        // console.log("\nrawTxn:\n",rawTxn);
+        // console.log("\nsendTxn:\n",sendTxn);
+        // console.log("\nreciept:\n",reciept);
+        let gasUsed = reciept.cumulativeGasUsed;
+        let gasPrice = reciept.effectiveGasPrice;
+        let transferFeeEther = gasUsed.mul(gasPrice);
+        // let transferFeeDollar = transferFeeEther.mul(3500);    
+        let txhash = reciept.transactionHash;
+        console.log(`transactionHash:${txhash}\ntransferFeeEther:${ethers.utils.formatEther(transferFeeEther)} \nmidprice:${midprice}`);
+       
+
+    }catch (e)
+    {
+        console.log(e);
+    }
+}
+
+
+
+
+/**
+ * 通过ETH 兑换指定数量的token
+ * @param token1 :输出token
+ * @param token2 :输入token
+ * @param amount :输入token 的数量
+ * @param slippage 
+ */
+
+async function swapETHForExactTokens(token1:Token,token2:Token,amount:string,slippage = "50"){
+    try{
+        console.log(`Swap target token:${token1.symbol} input token:${token2.symbol}`);
+        const pair = await createPair(token1,token2);                                       //creating instance of a pair
+        const route = await new Route([pair],token2,token1);                                // a a full specified path from input token to output token
+        const midprice = route.midPrice.toSignificant();
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.toSignificant()}`,);
+        console.log(`Direct ${token1.symbol}-${token2.symbol} mid price:${route.midPrice.invert().toSignificant()}`,);
+
+        const amountOut = ethers.utils.parseEther(amount).toString();                        // helper function to convert ETH to Wei
+        console.log("amountOut wei:",amountOut);
+        console.log("amountOut ether:",ethers.utils.formatEther(amountOut));
+
+        const slippageTolerance = new Percent(slippage,"10000")                             // Slippage tolerance，交易发生时，可接受的价格变动的最大范围,Percent(numerator,denominator),
+        console.log("slippage tolerance:",slippageTolerance.quotient.toString());           // 分子除以分母，50/10000 = 0.005,这里规定滑点容差不能超过千分之五，也就是成交价格不能超过千分之五
+        
+        const trade = new Trade(route,CurrencyAmount.fromRawAmount(token1,amountOut),
+        TradeType.EXACT_OUTPUT);                                                             //交易类型，EXACT_INPUT,说明输入token的数量是精确的，这里指的是ETH的数量
+        console.log("Direct Execution Price:",trade.executionPrice.toSignificant());
+
+
+
+        const amountInMax = trade.maximumAmountIn(slippageTolerance).toExact();             // 指定这次交易在滑点容差0.005的情况下，最大输入代币的数量
+        const amountInMaxHex = ethers.utils.parseUnits(amountInMax).toHexString();
+        const path = [token2.address,token1.address];                                       // An array of token addresses
+        const to = WALLET.address;                                                          // 20 minutes from the current Unix time
+        const deadline = createDeadLine();
+        const value = trade.outputAmount.toExact();              
+        const valueHex = ethers.utils.parseUnits(value).toHexString();
+        // const maxPriorityFeePerGas = ethers.utils.formatEther("1","gwei");
+
+        console.log("slippageTolerance:",slippageTolerance.toSignificant());
+        console.log("amountInMax:",amountInMax);
+    
+    
+        console.log("to:",to);
+        console.log("value:",value);
+
+        // Return a copy of transactionRequest, The default implementation calls checkTransaction and 
+        // resolves to if it is an ENS name, adds gasPrice, nonce, gasLimit and chainId based on the related 
+        // operations on Signer.
+        
+
+        // send transaction
+        const rawTxn = await UNISWAP_ROUTER_CONTRACT.populateTransaction.swapETHForExactTokens(
+            valueHex,
+            path,
+            to,
+            deadline,
+            {
+                value:amountInMaxHex,
+                gasLimit:ethers.utils.parseUnits('200000', 'wei'),
+                // maxPriorityFeePerGas:ethers.utils.parseUnits("5","gwei"),
+                // maxFeePerGas:ethers.utils.parseUnits("5","gwei"),
             }
         );
 
@@ -793,23 +1063,30 @@ async function main() {
     let beforeUniBalance = await getERC20Balance(WALLET.address,UNI.address,UNI_CONTRACT_ABI);
 
 
-
-    await swapExactEthForTokens(UNI,weth,"0.01");
-    await swapExactEthForTokens(DAI,weth,"0.01");
-
-
-    await swapExactTokensForETH(weth,DAI,"50",DAI_CONTRACT);
-    await swapExactTokensForETH(weth,UNI,"10",UNI_CONTRACT);
+    // 指定ETH数量兑换token
+    // await swapExactEthForTokens(UNI,weth,"0.2");
+    // await swapExactEthForTokens(DAI,weth,"0.2");
+    // 指定ETH数量兑换token,在转账时扣费
+    // await swapExactETHForTokensSupportingFeeOnTransferTokens(DAI,weth,"0.01");
 
 
-    await swapExactTokensForTokens(DAI,UNI,"1",UNI_CONTRACT);
-    await swapExactTokensForTokens(UNI,DAI,"100",DAI_CONTRACT);
+    // 指定token数量兑换ETH
+    // await swapExactTokensForETH(weth,DAI,"50",DAI_CONTRACT);
+    // await swapExactTokensForETH(weth,UNI,"10",UNI_CONTRACT);
+    // await swapExactTokensForETHSupportingFeeOnTransferTokens(weth,UNI,"10",UNI_CONTRACT);
 
-    await swapExactTokensForTokensSupportingFeeOnTransferTokens(DAI,UNI,"1",UNI_CONTRACT);
-    await swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,"100",DAI_CONTRACT);
 
+    // 指定token数量兑换兑换其他token
+    // await swapExactTokensForTokens(DAI,UNI,"1",UNI_CONTRACT);
+    // await swapExactTokensForTokens(UNI,DAI,"10",DAI_CONTRACT);
 
-    // await swapTokensForExactETH(weth,DAI,"0.0001",UNI_CONTRACT,"100");
+    // 指定token 数量兑换其他token,支持转账时扣费
+    // await swapExactTokensForTokensSupportingFeeOnTransferTokens(DAI,UNI,"10",UNI_CONTRACT);
+    // await swapExactTokensForTokensSupportingFeeOnTransferTokens(UNI,DAI,"100",DAI_CONTRACT);
+
+    // 用ERC20 token 兑换指定数量的ETH
+    // await swapTokensForExactETH(weth,UNI,"0.01",UNI_CONTRACT,"50");
+    await swapETHForExactTokens(UNI,weth,"10");
 
 
     console.log("before swap ether:",ethers.utils.formatEther(beforeBalance.toString()))
