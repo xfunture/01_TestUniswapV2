@@ -36,7 +36,7 @@ scripts 目录下的脚本程序，第一个V2代表的是Uniswap的版本，第
 
 运行测试程序
 ```
-npx hardhat run ./scripts/testUniswapV3.ts
+npx hardhat run ./scripts/testUniswapV2v3.ts
 ```
 
 
@@ -45,5 +45,22 @@ npx hardhat run ./scripts/testUniswapV3.ts
 --forking 指定以太坊节点
 --fork-block-number 指定特定区块
 ```
-npx hardhat node --forking https://eth-mainnet.g.alchemy.com/v2/<key> --fork-block-number 20145880
+npx hardhat node --fork https://eth-mainnet.g.alchemy.com/v2/<key> --fork-block-number 20145880
+```
+
+# 配置文件
+运行项目需要配置以下参数
+```
+ETHERSCAN_API_KEY=
+ALCHEMY_API_URL=
+ALCHEMY_PRIVATE_KEY=
+ETHMAINNET_API_URL=
+ETHMAINNET_PRIVATE_KEY=
+COINMARKETCAP_API_KEY=
+SEPOLIA_API_URL=
+SEPOLIA_WS_URL=
+SEPOLIA_PRIVATE_KEY=
+HOLESKY_API_URL=
+HOLESKY_WS_URL=
+HOLESKY_PRIVATE_KEY=
 ```

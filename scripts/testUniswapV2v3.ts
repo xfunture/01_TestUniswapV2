@@ -1064,8 +1064,8 @@ async function main() {
 
 
     // 指定ETH数量兑换token
-    // await swapExactEthForTokens(UNI,weth,"0.2");
-    // await swapExactEthForTokens(DAI,weth,"0.2");
+    await swapExactEthForTokens(UNI,weth,"0.2");
+    await swapExactEthForTokens(DAI,weth,"0.2");
     // 指定ETH数量兑换token,在转账时扣费
     // await swapExactETHForTokensSupportingFeeOnTransferTokens(DAI,weth,"0.01");
 
@@ -1086,7 +1086,7 @@ async function main() {
 
     // 用ERC20 token 兑换指定数量的ETH
     // await swapTokensForExactETH(weth,UNI,"0.01",UNI_CONTRACT,"50");
-    await swapETHForExactTokens(UNI,weth,"10");
+    // await swapETHForExactTokens(UNI,weth,"10");
 
 
     console.log("before swap ether:",ethers.utils.formatEther(beforeBalance.toString()))
