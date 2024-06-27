@@ -2,9 +2,9 @@ import { ethers } from 'ethers';
 import { CurrentConfig } from '../config';
 import { computePoolAddress } from '@uniswap/v3-sdk';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
-import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
+import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 
-import { POOL_FACTORY_CONTRACT_ADDRESS,QUOTE_CONTRACT_ADDRESS } from '../libs/constants';
+import { POOL_FACTORY_CONTRACT_ADDRESS,QUOTER_CONTRACT_ADDRESS } from '../libs/constants';
 
 import { getProvider } from '../libs/providers';
 import { toReadableAmount,fromReadableAmount } from '../libs/conversion';
@@ -21,11 +21,15 @@ import { toReadableAmount,fromReadableAmount } from '../libs/conversion';
  */
 export async function quote():Promise<string>{
     const quoterContract = new ethers.Contract(
-        QUOTE_CONTRACT_ADDRESS,
+        QUOTER_CONTRACT_ADDRESS,
         Quoter.abi,
         getProvider()
     )
+    console.log("quoter contract:",QUOTER_CONTRACT_ADDRESS);
+
+    // 获取Pool合约相关变量
     const poolConstants = await getPoolConstants()
+    
 
     const quoteAmountQut = await quoterContract.callStatic.quoteExactInputSingle(
         poolConstants.token0,
@@ -52,12 +56,12 @@ export async function quote():Promise<string>{
  * 同步查询而不是顺序查询，是因为顺序查询有可能产生两个区块的数据不一致的问题。
  * @returns 
  */
-async function getPoolConstants():Promise<{
+export async function getPoolConstants():Promise<{
     token0:string,
     token1:string,
     fee:number,
-    // liquidity:number,
-    // slot0:number
+    liquidity:ethers.BigNumber,
+    slot0:ethers.BigNumber
 }>{
     const currentPoolAddress = computePoolAddress(
         {
@@ -74,20 +78,58 @@ async function getPoolConstants():Promise<{
         IUniswapV3PoolABI.abi,
         getProvider()
     )
-    console.log("poolContract:",poolContract);
     const [token0,token1,fee,liquidity,slot0] = await Promise.all([
-        poolContract.token0,
-        poolContract.token1,
-        poolContract.fee,
-        poolContract.liquidity,
-        poolContract.slot0,
+        poolContract.token0(),
+        poolContract.token1(),
+        poolContract.fee(),
+        poolContract.liquidity(),
+        poolContract.slot0(),
     ])
     return {
         token0,
         token1,
         fee,
-        // liquidity,
-        // slot0
+        liquidity,
+        slot0
     }
 
+}
+
+/**
+ * fee is the fee that is taken from every swap that is executed on the pool in 1 per million - if the fee value of a pool is 500, 500/ 1000000 (or 0.05%) of the trade amount is taken as a fee. This fee goes to the liquidity providers of the Pool.
+ * liquidity is the amount of liquidity the Pool can use for trades at the current price.
+ * sqrtPriceX96 is the current Price of the pool, encoded as a ratio between token0 and token1.
+ * tick is the tick at the current price of the pool.
+ * @returns 
+ */
+export async function getPoolInfo() {
+
+    const currentPoolAddress = computePoolAddress(
+        {
+            factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
+            tokenA:CurrentConfig.tokens.in,
+            tokenB:CurrentConfig.tokens.out,
+            fee: CurrentConfig.tokens.poolFee
+        }
+    )
+
+    console.log("currentPoolAddress:",currentPoolAddress);
+    const poolContract = new ethers.Contract(
+        currentPoolAddress,
+        IUniswapV3PoolABI.abi,
+        getProvider()
+    )
+    const [fee, liquidity, slot0] =
+    await Promise.all([
+        poolContract.fee(),
+        poolContract.liquidity(),
+        poolContract.slot0(),
+    ])
+
+    return {
+        fee,
+        liquidity,
+        sqrtPriceX96: slot0[0],
+        tick: slot0[1],
+    } 
 }

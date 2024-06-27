@@ -14,11 +14,13 @@
   "dependencies": {
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@uniswap/sdk-core": "^5.3.1",
+    "@uniswap/smart-order-router": "^3.35.8",
     "@uniswap/v2-sdk": "^4.4.1",
     "@uniswap/v3-sdk": "^3.13.1",
     "dotenv": "^16.4.5",
     "ethers": "5.7",
-    "hardhat": "^2.22.5"
+    "hardhat": "^2.22.5",
+    "jsbi": "^3.2.5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0"
