@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-const READABLE_FROM_LEN = 4;
+const READABLE_FROM_LEN = 8;
 
 /**
  * 大单位转小单位
@@ -18,6 +18,7 @@ export function fromReadableAmount(amount:number,decimals:number):BigNumber{
  * @returns 
  */
 export function toReadableAmount(rawAmount:number,decimals:number):string{
-    return ethers.utils.formatUnits(rawAmount,decimals).slice(0,READABLE_FROM_LEN);
+    // return ethers.utils.formatUnits(rawAmount,decimals).slice(0,READABLE_FROM_LEN);
+    return ethers.utils.formatUnits(rawAmount,decimals);
 }
 

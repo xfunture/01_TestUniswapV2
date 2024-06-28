@@ -26,33 +26,33 @@ import { fromReadableAmount } from './utils';
 import { Trade } from '@uniswap/v2-sdk';
 import { getTokenTransferApproval } from './trading';
   
-
-  export async function generateRoute():Promise<SwapRoute|null>{
+// Promise<SwapRoute|null>
+  export async function generateRoute(){
     const router = new AlphaRouter({
-        chainId:CHAINID,
+        chainId:ChainId.MAINNET,
         provider:getMainnetProvider()
     })
 
-    const options:SwapOptionsSwapRouter02 = {
-        recipient:CurrentConfig.wallet.address,
-        slippageTolerance:new Percent(50,10_000),
-        deadline:Math.floor(Date.now() / 1000 + 1800),
-        type:SwapType.SWAP_ROUTER_02,
-    }
+    // const options:SwapOptionsSwapRouter02 = {
+    //     recipient:CurrentConfig.wallet.address,
+    //     slippageTolerance:new Percent(50,10_000),
+    //     deadline:Math.floor(Date.now() / 1000 + 1800),
+    //     type:SwapType.SWAP_ROUTER_02,
+    // }
 
-    const route = await router.route(
-        CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.in,
-            fromReadableAmount(
-                CurrentConfig.tokens.amountIn,
-                CurrentConfig.tokens.in.decimals
-            ).toString()
-        ),
-        CurrentConfig.tokens.out,
-        TradeType.EXACT_INPUT,
-        options
-    )
-    return route;
+    // const route = await router.route(
+    //     CurrencyAmount.fromRawAmount(
+    //         CurrentConfig.tokens.in,
+    //         fromReadableAmount(
+    //             CurrentConfig.tokens.amountIn,
+    //             CurrentConfig.tokens.in.decimals
+    //         ).toString()
+    //     ),
+    //     CurrentConfig.tokens.out,
+    //     TradeType.EXACT_INPUT,
+    //     options
+    // )
+    // return route;
   }
 
   export async function executeRoute(

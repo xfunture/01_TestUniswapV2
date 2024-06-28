@@ -19,7 +19,7 @@ import { toReadableAmount,fromReadableAmount } from '../libs/conversion';
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote():Promise<string>{
+export async function quote():Promise<ethers.BigNumber>{
     const quoterContract = new ethers.Contract(
         QUOTER_CONTRACT_ADDRESS,
         Quoter.abi,
@@ -28,7 +28,7 @@ export async function quote():Promise<string>{
     console.log("quoter contract:",QUOTER_CONTRACT_ADDRESS);
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants()
+    const poolConstants = await getPoolConstants();
     
 
     const quoteAmountQut = await quoterContract.callStatic.quoteExactInputSingle(
@@ -41,7 +41,8 @@ export async function quote():Promise<string>{
         ).toString(),
         0
     )
-    return toReadableAmount(quoteAmountQut,CurrentConfig.tokens.out.decimals);
+    // return toReadableAmount(quoteAmountQut,CurrentConfig.tokens.out.decimals);
+    return quoteAmountQut;
 }
 
 

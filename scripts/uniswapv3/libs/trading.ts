@@ -17,8 +17,8 @@ import { fromReadableAmount } from './utils';
 import { quote } from './quote';
 
 export type TokenTrade = Trade<Token,Token,TradeType>
-
-export async function createTrade():Promise<TokenTrade>{
+// Promise<TokenTrade>
+export async function createTrade(){
     const poolInfo = await getPoolInfo();
 
     const pool = new Pool(
@@ -37,28 +37,30 @@ export async function createTrade():Promise<TokenTrade>{
     )
 
     const amountOut = await getOutputQuote(swapRoute)
+    console.log(amountOut);
 
-    const uncheckedTrade = Trade.createUncheckedTrade({
-        route:swapRoute,
-        inputAmount:CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.in,
-            fromReadableAmount(
-                CurrentConfig.tokens.amountIn,
-                CurrentConfig.tokens.in.decimals
-            ).toString()
-        ),
-        outputAmount:CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.out,
-            JSBI.BigNumber(amountOut)
-        ),
-        tradeType:TradeType.EXACT_INPUT
-    })
-    return uncheckedTrade;
+
+    // const uncheckedTrade = Trade.createUncheckedTrade({
+    //     route:swapRoute,
+    //     inputAmount:CurrencyAmount.fromRawAmount(
+    //         CurrentConfig.tokens.in,
+    //         fromReadableAmount(
+    //             CurrentConfig.tokens.amountIn,
+    //             CurrentConfig.tokens.in.decimals
+    //         ).toString()
+    //     ),
+    //     outputAmount:CurrencyAmount.fromRawAmount(
+    //         CurrentConfig.tokens.out,
+    //         amountOut
+    //     ),
+    //     tradeType:TradeType.EXACT_INPUT
+    // })
+    // return uncheckedTrade;
 }
 
 export async function executeTrade(
     trade:TokenTrade
-):Promise<TransactionState>{
+):Promise<ethers.providers.TransactionReceipt>{
     const walletAddress = getWalletAddress();
     const provider = getProvider();
 
@@ -70,8 +72,8 @@ export async function executeTrade(
     const tokenApproval = await getTokenTransferApproval(CurrentConfig.tokens.in);
 
     // Fail if transfer approvals do not go through
-    if(tokenApproval !== TransactionState.Sent){
-        return TransactionState.Failed;
+    if(tokenApproval.status == 0){
+        return tokenApproval;
     }
 
     const options:SwapOptions = {
@@ -87,8 +89,8 @@ export async function executeTrade(
         to:SWAP_ROUTER_ADDRESS,
         value:methodParameters.value,
         from:walletAddress,
-        maxFeePerGas:MAX_FEE_PER_GAS,
-        maxPriorityFeePerGas:MAX_PRIORITY_FEE_PER_GAS,
+        // maxFeePerGas:MAX_FEE_PER_GAS,
+        // maxPriorityFeePerGas:MAX_PRIORITY_FEE_PER_GAS,
     }
 
     const res = await sendTransaction(tx);
@@ -122,39 +124,35 @@ export async function getOutputQuote(route:Route<Currency,Currency>){
         data:calldata
     })
 
-    return ethers.utils.defaultAbiCoder.decode(['uint256'],quoteCallReturnData)
+    return quoteCallReturnData;
+
+    // return ethers.utils.defaultAbiCoder.decode(['uint256'],quoteCallReturnData)
 
 }
 
 export async function getTokenTransferApproval(
     token:Token
-):Promise<TransactionState>{
+):Promise<ethers.providers.TransactionReceipt>{
     const provider = getProvider();
     const address = getWalletAddress()
     if(!provider || !address){
-        console.log('No Provider found');
-        return TransactionState.Failed
+        throw new Error("no provider");
     }
 
-    try{
-        const tokenContract = new ethers.Contract(
-            token.address,
-            ERC20_ABI,
-            provider
-        )
+    const tokenContract = new ethers.Contract(
+        token.address,
+        ERC20_ABI,
+        provider
+    )
 
-        const transaction = await tokenContract.populateTransaction.approve(
-            SWAP_ROUTER_ADDRESS,
-            fromReadableAmount(
-                TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER,
-                token.decimals
-            ).toString()
-        )
+    const transaction = await tokenContract.populateTransaction.approve(
+        SWAP_ROUTER_ADDRESS,
+        fromReadableAmount(
+            TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER,
+            token.decimals
+        ).toString()
+    )
 
-        return sendTransaction(transaction)
+    return sendTransaction(transaction)
 
-    }catch(e){
-        console.error(e);
-        return TransactionState.Failed;
-    }
 }
