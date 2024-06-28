@@ -34,6 +34,13 @@ scripts 目录下的脚本程序，第一个V2代表的是Uniswap的版本，第
 * swapExactETHForTokensSupportingFeeOnTransferTokens 使用ETH交换指定数量的代币，支持转账时扣费
 * swapExactTokensForETHSupportingFeeOnTransferTokens 使用指定数量的代币交换ETH，支持转账时扣费
 
+### 3.scripts/uniswapv3/test.ts
+测试uniswapv3 代币交换的功能，目前还不完善
+```
+npx hardhat run ./scripts/uniswapv3/test.ts
+```
+
+
 运行测试程序
 ```
 npx hardhat run ./scripts/testUniswapV2v3.ts
