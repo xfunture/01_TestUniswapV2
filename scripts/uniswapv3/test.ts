@@ -58,9 +58,30 @@ function calculateFee(receipt:ethers.providers.TransactionReceipt):ethers.BigNum
 }
 
 async function firstDemo(){
+    const provider = getProvider();
+    if(!provider){
+        throw new Error('Provider required to get pool state');
+    }
+
+
+    /*****************************************************************************get Amount out********************************************************************* */
+
+    const amountOut = await quote();
+    console.log("amountIn:",CurrentConfig.tokens.amountIn);
+    console.log("quotedAmountOut:",ethers.utils.formatUnits(amountOut.toString(),CurrentConfig.tokens.out.decimals));
+    /*****************************************************************************get Amount out********************************************************************* */
+
+
+
+    /*****************************************************************************create trade ********************************************************************* */
     const poolInfo = await getPoolInfo();
     console.log("token0:",poolInfo.token0);
     console.log("token1:",poolInfo.token1);
+    console.log("fee:",poolInfo.fee);
+    console.log("liquidity:",poolInfo.liquidity);
+    console.log("sqrtPriceX96:",poolInfo.sqrtPriceX96);
+    console.log("tickSpacing:",poolInfo.tickSpacing);
+    console.log("tick:",poolInfo.tick);
 
 
     const pool = new Pool(
@@ -77,78 +98,31 @@ async function firstDemo(){
         CurrentConfig.tokens.in,
         CurrentConfig.tokens.out
     )
-
-    // const amountOut = await getOutputQuote(swapRoute)
-    // console.log("amountOut:",amountOut);
-
-
-    const provider = getProvider();
-
-    if(!provider){
-        throw new Error('Provider required to get pool state');
-    }
-
-    const { calldata } = await SwapQuoter.quoteCallParameters(
-        swapRoute,
-        CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.in,
-            fromReadableAmount(
-                CurrentConfig.tokens.amountIn,
-                CurrentConfig.tokens.in.decimals
-            ).toString()
-        ),
-        TradeType.EXACT_INPUT,
-        {
-            useQuoterV2:true,
-        }
-    )
-
-    const quoteCallReturnData = await provider.call({
-        to:QUOTER_CONTRACT_ADDRESS,
-        data:calldata
-    })
-
-    console.log("quoteCallReturnData:",quoteCallReturnData);
-    // ethers.utils.defaultAbiCoder.decode(['uint256'],quoteCallReturnData)
-
-    const amountOut = await quote();
-    console.log("amountOut:",ethers.utils.formatUnits(amountOut.toString(),18));
-
-
-
     const uncheckedTrade:TokenTrade = Trade.createUncheckedTrade({
         route:swapRoute,
-        inputAmount:CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.in,
-            fromReadableAmount(
-                CurrentConfig.tokens.amountIn,
-                CurrentConfig.tokens.in.decimals
-            ).toString()
-        ),
-        outputAmount:CurrencyAmount.fromRawAmount(
-            CurrentConfig.tokens.out,
-            amountOut.toString()
-        ),
+        inputAmount:CurrencyAmount.fromRawAmount(CurrentConfig.tokens.in,fromReadableAmount(CurrentConfig.tokens.amountIn,CurrentConfig.tokens.in.decimals).toString()),
+        outputAmount:CurrencyAmount.fromRawAmount(CurrentConfig.tokens.out,amountOut.toString()),
         tradeType:TradeType.EXACT_INPUT
     })
-    // console.log("uncheckedTrade:",uncheckedTrade);
+    /*****************************************************************************create trade ********************************************************************* */
 
 
 
-    /**execute Trade */
-    const walletAddress = getWalletAddress();
+    /*****************************************************************************execute Trade*********************************************************************************/
+ 
 
-    if(!walletAddress || !provider){
-        throw new Error("Cannot execute a trade without a connected wallet");
-    }
-
-
+    /*********************************************approve*********************************************************************************************/
     // Give approval to the router to spend the token
     const tokenApprovalReceipt = await getTokenTransferApproval(CurrentConfig.tokens.in);
     const approvalFee = calculateFee(tokenApprovalReceipt);
     console.log(`tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
+    /*********************************************approve*********************************************************************************************/
 
 
+    const walletAddress = getWalletAddress();
+    if(!walletAddress || !provider){
+        throw new Error("Cannot execute a trade without a connected wallet");
+    }
     const options:SwapOptions = {
         slippageTolerance: new Percent(50,10_000),// 50 bips,or 0.50%,该滑点指的是这次交易输出token的数量我们能接受的最大百分比
         deadline:Math. floor(Date.now()/1000) + 60 * 10, // 10 minutes from current unix time
@@ -157,13 +131,13 @@ async function firstDemo(){
     const methodParameters = SwapRouter.swapCallParameters([uncheckedTrade],options)
     const amountIn = ethers.utils.parseUnits(CurrentConfig.tokens.amountIn.toString(),18);
     const amountInHex = amountIn.toHexString();
-
-    console.log("amountIn:",CurrentConfig.tokens.amountIn);
+    console.log("value:",methodParameters.value);
     const tx = {
         data:methodParameters.calldata,
         to:SWAP_ROUTER_ADDRESS,
         value:amountInHex,
         from:walletAddress,
+        gasLimit:ethers.utils.hexlify(500000)
         // maxFeePerGas:MAX_FEE_PER_GAS,
         // maxPriorityFeePerGas:MAX_PRIORITY_FEE_PER_GAS,
     }
@@ -176,13 +150,17 @@ async function firstDemo(){
     console.log("eth balance:",ethers.utils.formatEther(beforeBalance.toString()))
     console.log("usdcBalance:",toReadableAmount(usdcBalance,6));
     console.log("daiBalance:",toReadableAmount(daiBalance,DAI_TOKEN.decimals));
-
     console.log("uniBalance:",toReadableAmount(uniBalance,UNI_TOKEN.decimals));
 
 
+
     const receipt = await sendTransaction(tx);
-    // console.log("receipt",receipt);
     let transferFeeEther = calculateFee(receipt);
+
+    /*****************************************************************************execute Trade*********************************************************************************/
+
+
+
 
     let afterbalance = await provider.getBalance(walletAddress);
     console.log("\n\nafter swap");
@@ -211,7 +189,6 @@ async function main(){
 
 
     const amoutOut = await quote();
-    console.log(toReadableAmount(amoutOut.toNumber(),18));
     console.log(`Output  amount: ${ethers.utils.formatUnits(amoutOut,CurrentConfig.tokens.out.decimals)}`);
 
     await firstDemo();
