@@ -32,3 +32,8 @@ export function displayTrade(trade: Trade<Token, Token, TradeType>): string {
     trade.inputAmount.currency.symbol
   } for ${trade.outputAmount.toExact()} ${trade.outputAmount.currency.symbol}`
 }
+
+
+export function createDeadLine():number{
+  return Math.floor(Date.now()/1000) + 60 * 20; // 20 minutes from the current Unix time
+}

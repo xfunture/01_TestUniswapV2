@@ -1,6 +1,7 @@
 import { Token } from '@uniswap/sdk-core';
 import { FeeAmount } from '@uniswap/v3-sdk';
 import {WETH_TOKEN,USDC_TOKEN,DAI_TOKEN,UNI_TOKEN} from './libs/constants';
+import { WETH } from '@uniswap/sdk';
 require("dotenv").config();
 
 
@@ -44,8 +45,8 @@ export const CurrentConfig:ExampleConfig = {
     },
     tokens:{
         in:WETH_TOKEN,
-        amountIn:0.01,
-        out:UNI_TOKEN,
+        amountIn:0.02,
+        out:USDC_TOKEN,
         poolFee:FeeAmount.MEDIUM,
     }
 }

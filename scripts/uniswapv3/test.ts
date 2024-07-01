@@ -1,8 +1,8 @@
 import { CurrentConfig } from './config';
-import { quote,getPoolConstants } from './libs/quote';
+import { quote1ExactInputSingle,getPoolConstants, quote1ExactInput, quote2ExactInputSingle, quote2ExactInput } from './libs/quote';
 import { toReadableAmount } from './libs/conversion';
 import { getPoolInfo } from './libs/pool';
-import { createTrade, getTokenTransferApproval } from './libs/trading';
+import { createTrade, getOutTokenTransferApproval, getTokenTransferApproval } from './libs/trading';
 import { getOutputQuote,TokenTrade} from './libs/trading';
 import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
@@ -10,7 +10,7 @@ import { fromReadableAmount } from './libs/utils';
 import { JSBI } from 'jsbi';
 import { getProvider, getWalletAddress, sendTransaction ,wallet} from './libs/providers';
 import { generateRoute } from './libs/routing';
-import { DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, UNI_TOKEN } from './libs/constants';
+import { DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, UNI_TOKEN, WETH_TOKEN } from './libs/constants';
 import { ethers, BigNumber, BigNumberish } from 'ethers';
 import * as fs from 'fs';
 
@@ -66,7 +66,7 @@ async function firstDemo(){
 
     /*****************************************************************************get Amount out********************************************************************* */
 
-    const amountOut = await quote();
+    const amountOut = await quote1ExactInputSingle();
     console.log("amountIn:",CurrentConfig.tokens.amountIn);
     console.log("quotedAmountOut:",ethers.utils.formatUnits(amountOut.toString(),CurrentConfig.tokens.out.decimals));
     /*****************************************************************************get Amount out********************************************************************* */
@@ -113,9 +113,13 @@ async function firstDemo(){
 
     /*********************************************approve*********************************************************************************************/
     // Give approval to the router to spend the token
-    const tokenApprovalReceipt = await getTokenTransferApproval(CurrentConfig.tokens.in);
-    const approvalFee = calculateFee(tokenApprovalReceipt);
-    console.log(`tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
+    let tokenApprovalReceipt = await getTokenTransferApproval(CurrentConfig.tokens.in);
+    let approvalFee = calculateFee(tokenApprovalReceipt);
+    console.log(`in tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
+
+    // tokenApprovalReceipt = await getOutTokenTransferApproval(CurrentConfig.tokens.out,amountOut);
+    // approvalFee = calculateFee(tokenApprovalReceipt);
+    // console.log(`out tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
     /*********************************************approve*********************************************************************************************/
 
 
@@ -143,11 +147,13 @@ async function firstDemo(){
     }
 
     let beforeBalance = await provider.getBalance(walletAddress);
+    let wethBalance = await getERC20Balance(wallet.address,WETH_TOKEN.address)
     let usdcBalance = await USDC_CONTRACT.balanceOf(wallet.address);
     let daiBalance = await getERC20Balance(wallet.address,DAI_TOKEN.address);
     let uniBalance = await getERC20Balance(wallet.address,UNI_TOKEN.address);
     console.log("\n\nbefore swap")
     console.log("eth balance:",ethers.utils.formatEther(beforeBalance.toString()))
+    console.log("wethBalance:",toReadableAmount(wethBalance,WETH_TOKEN.decimals));
     console.log("usdcBalance:",toReadableAmount(usdcBalance,6));
     console.log("daiBalance:",toReadableAmount(daiBalance,DAI_TOKEN.decimals));
     console.log("uniBalance:",toReadableAmount(uniBalance,UNI_TOKEN.decimals));
@@ -166,8 +172,10 @@ async function firstDemo(){
     console.log("\n\nafter swap");
     console.log("eth balance",ethers.utils.formatEther(afterbalance.toString()));
     usdcBalance = await USDC_CONTRACT.balanceOf(wallet.address);
+    wethBalance = await getERC20Balance(wallet.address,WETH_TOKEN.address)
     daiBalance = await getERC20Balance(wallet.address,DAI_TOKEN.address);
     uniBalance = await getERC20Balance(wallet.address,UNI_TOKEN.address);
+    console.log("wethBalance:",toReadableAmount(wethBalance,WETH_TOKEN.decimals));
     console.log("usdcBalance:",toReadableAmount(usdcBalance,6));
     console.log("daiBalance:",toReadableAmount(daiBalance,DAI_TOKEN.decimals));
     console.log("uniBalance:",toReadableAmount(uniBalance,UNI_TOKEN.decimals));
@@ -182,19 +190,40 @@ async function testRoute(){
 
 }
 
+/**
+ * 测试报价函数
+ * 1.测试Quoter1 和 Quoter2 的报价函数的区别
+ *  Quoter2 报价函数会返回更加多的信息
+ *  Quoter2 中的报价函数返回以下参数：
+ *      sqrtPriceX96After：假设该笔交易成功之后的sqrtPriceX96
+ *      initializedTicksCrossed 
+ *      gasEstimate
+ *      amountOut
+ * 2. 测试报价单跳报价函数和多跳报价函数
+ *  quoteExactInputSingle 只支持单跳兑换
+ *  quoteExactInput       支持多跳兑换
+ */
+async function testQuote(){
+
+    let amountOut1 = await quote1ExactInputSingle();
+
+    let amountOut2 = await quote2ExactInputSingle();
+
+    let amountOut3 = await quote1ExactInput();
+
+    let amountOut4 = await quote2ExactInput();
+}
+
 async function main(){
     console.log("Target symbol: ",CurrentConfig.tokens.out.symbol);
     console.log(`Input  symbol: ${CurrentConfig.tokens.in.symbol}`);
     console.log(`Input  amount: ${CurrentConfig.tokens.amountIn}`);
 
 
-    const amoutOut = await quote();
-    console.log(`Output  amount: ${ethers.utils.formatUnits(amoutOut,CurrentConfig.tokens.out.decimals)}`);
+    // await firstDemo();
 
-    await firstDemo();
 
-    // const receipt = await testRoute();
-
+    testQuote();
 
 
 

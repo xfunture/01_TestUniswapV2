@@ -14,7 +14,7 @@ import {
 } from './providers';
 
 import { fromReadableAmount } from './utils';
-import { quote } from './quote';
+import { quote1ExactInputSingle } from './quote';
 
 export type TokenTrade = Trade<Token,Token,TradeType>
 // Promise<TokenTrade>
@@ -148,9 +148,35 @@ export async function getTokenTransferApproval(
     const transaction = await tokenContract.populateTransaction.approve(
         SWAP_ROUTER_ADDRESS,
         fromReadableAmount(
-            TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER,
+            CurrentConfig.tokens.amountIn,
             token.decimals
         ).toString()
+    )
+
+    return sendTransaction(transaction)
+
+}
+
+
+export async function getOutTokenTransferApproval(
+    token:Token,
+    amountOut:ethers.BigNumber
+):Promise<ethers.providers.TransactionReceipt>{
+    const provider = getProvider();
+    const address = getWalletAddress()
+    if(!provider || !address){
+        throw new Error("no provider");
+    }
+
+    const tokenContract = new ethers.Contract(
+        token.address,
+        ERC20_ABI,
+        provider
+    )
+
+    const transaction = await tokenContract.populateTransaction.approve(
+        SWAP_ROUTER_ADDRESS,
+        amountOut
     )
 
     return sendTransaction(transaction)

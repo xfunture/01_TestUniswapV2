@@ -424,7 +424,7 @@ async function swapExactTokensForTokens(token1:Token,token2:Token,amount:string,
 
 
 
-        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();                 // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
+        const amountOutMin = trade.minimumAmountOut(slippageTolerance).toExact();           // 指定这次交易在滑点容差0.005的情况下，获取到的最小数量的目标token
         const amountOutMinHex = ethers.utils.parseUnits(amountOutMin).toHexString();
         const path = [token2.address,token1.address];                                       // An array of token addresses
         const to = WALLET.address;                                                          // 20 minutes from the current Unix time
