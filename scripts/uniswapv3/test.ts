@@ -1,17 +1,18 @@
 import { CurrentConfig } from './config';
-import { quote1ExactInputSingle,getPoolConstants, quote1ExactInput, quote2ExactInputSingle, quote2ExactInput } from './libs/quote';
+import { quote1ExactInputSingle,getPoolConstants, quote1ExactInput, quote2ExactInputSingle, quote2ExactInput, quote1ExactOutputSingle, quote2ExactOutputSingle, quote1ExactOutput, quote2ExactOutput } from './libs/quote';
 import { toReadableAmount } from './libs/conversion';
 import { getPoolInfo } from './libs/pool';
 import { createTrade, getOutTokenTransferApproval, getTokenTransferApproval } from './libs/trading';
 import { getOutputQuote,TokenTrade} from './libs/trading';
-import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions } from '@uniswap/v3-sdk';
+import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
 import { fromReadableAmount } from './libs/utils';
 import { JSBI } from 'jsbi';
 import { getProvider, getWalletAddress, sendTransaction ,wallet} from './libs/providers';
 import { generateRoute } from './libs/routing';
-import { DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, UNI_TOKEN, WETH_TOKEN } from './libs/constants';
-import { ethers, BigNumber, BigNumberish } from 'ethers';
+import { APE_TOKEN, DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER, UNI_TOKEN, USDC_TOKEN, WETH_TOKEN } from './libs/constants';
+import { ethers, BigNumber, BigNumberish, Wallet } from 'ethers';
+import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
 import * as fs from 'fs';
 
 const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toString();
@@ -24,6 +25,9 @@ const USDC_CONTRACT_ABI = fs.readFileSync("./contracts/abis/USDCAbi.json").toStr
 const minTokenAbi = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}]
 const USDC_CONTRACT = new ethers.Contract(USDC_CONTRACT_ADDRESS,minTokenAbi,wallet);
 
+const UNISWAPV3_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+const UNISWAPV3_CONTRACT_ABI = fs.readFileSync("./contracts/abis/UniswapV3RouterAbi.json").toString();
+const UNISWAPV3_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER_ADDRESS,UNISWAPV3_CONTRACT_ABI,wallet);
 
 
 
@@ -58,6 +62,11 @@ function calculateFee(receipt:ethers.providers.TransactionReceipt):ethers.BigNum
 }
 
 async function firstDemo(){
+
+    console.log("Target symbol: ",CurrentConfig.tokens.out.symbol);
+    console.log(`Input  symbol: ${CurrentConfig.tokens.in.symbol}`);
+    console.log(`Input  amount: ${CurrentConfig.tokens.amountIn}`);
+
     const provider = getProvider();
     if(!provider){
         throw new Error('Provider required to get pool state');
@@ -66,7 +75,7 @@ async function firstDemo(){
 
     /*****************************************************************************get Amount out********************************************************************* */
 
-    const amountOut = await quote1ExactInputSingle();
+    const amountOut = await quote1ExactInputSingle(CurrentConfig.tokens.in,CurrentConfig.tokens.out,CurrentConfig.tokens.amountIn,CurrentConfig.tokens.poolFee);
     console.log("amountIn:",CurrentConfig.tokens.amountIn);
     console.log("quotedAmountOut:",ethers.utils.formatUnits(amountOut.toString(),CurrentConfig.tokens.out.decimals));
     /*****************************************************************************get Amount out********************************************************************* */
@@ -205,25 +214,95 @@ async function testRoute(){
  */
 async function testQuote(){
 
-    let amountOut1 = await quote1ExactInputSingle();
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    // const tokenMiddle:Token = APE_TOKEN;
+    const tokenMiddle:Token = UNI_TOKEN;
+    // const tokenMiddle:Token = DAI_TOKEN;
+    // const tokenOut:Token = APE_TOKEN;
+    const amountIn:number = 0.02;
+    const amountOut:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
 
-    let amountOut2 = await quote2ExactInputSingle();
 
-    let amountOut3 = await quote1ExactInput();
+    console.log("Target symbol: ",tokenOut.symbol);
+    console.log(`Input  symbol: ${tokenIn.symbol}`);
+    console.log(`Input  amount: ${amountIn}`);
 
-    let amountOut4 = await quote2ExactInput();
+    let amountOut1 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+
+    let amountOut2 = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+
+    let amountOut3 = await quote1ExactInput(tokenIn,tokenMiddle,tokenOut,amountIn,poolFee);
+
+    let amountOut4 = await quote2ExactInput(tokenIn,tokenMiddle,tokenOut,amountIn,poolFee);
+
+    let amountIn1 = await quote1ExactOutputSingle(tokenIn,tokenOut,amountOut,poolFee);
+
+    let amountIn2 = await quote2ExactOutputSingle(tokenIn,tokenOut,amountOut,poolFee);
+
+    let amountIn3 = await quote1ExactOutput(tokenIn,tokenMiddle,tokenOut,amountOut,poolFee);
+    
+    let amountIn4 = await quote2ExactOutput(tokenIn,tokenMiddle,tokenOut,amountOut,poolFee);
+}
+
+/**
+ * 测试多跳代币交换
+ */
+
+async function testMultiHopSwap(){
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = UNI_TOKEN;
+    const amountIn:number = 0.02;
+    const amountOut:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+    const output = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+
+
+    console.log("UniswapV3Router address:",UNISWAPV3_CONTRACT.address);
+    console.log("output.amountOut:",output.amountOut);
+
+    // struct ExactInputSingleParams {
+    //     address tokenIn;
+    //     address tokenOut;
+    //     uint24 fee;
+    //     address recipient;
+    //     uint256 amountIn;
+    //     uint256 amountOutMinimum;
+    //     uint160 sqrtPriceLimitX96;
+    // }
+
+    const params = {
+        tokenIn:tokenIn.address,
+        tokenOut:tokenOut.address,
+        fee:poolFee,
+        recipient:wallet.address,
+        amountIn:fromReadableAmount(amountIn,tokenIn.decimals),
+        amountOutMinimum:output.amoutOut,
+        sqrtPriceLimitX96:sqrtPriceLimitX96
+    }
+
+    const pool = await UNISWAPV3_CONTRACT.callStatic.exactInputSingle(params);
+    // console.log(pool);
+
+
 }
 
 async function main(){
-    console.log("Target symbol: ",CurrentConfig.tokens.out.symbol);
-    console.log(`Input  symbol: ${CurrentConfig.tokens.in.symbol}`);
-    console.log(`Input  amount: ${CurrentConfig.tokens.amountIn}`);
+
 
 
     // await firstDemo();
 
 
     testQuote();
+
+
+    // testMultiHopSwap();
 
 
 

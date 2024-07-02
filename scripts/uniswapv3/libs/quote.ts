@@ -11,6 +11,7 @@ import { getProvider } from '../libs/providers';
 import { toReadableAmount,fromReadableAmount } from '../libs/conversion';
 import { createDeadLine } from './utils';
 import { getAddress } from 'ethers/lib/utils';
+import { Token } from '@uniswap/sdk-core';
 
 
 /**
@@ -24,33 +25,33 @@ import { getAddress } from 'ethers/lib/utils';
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote1ExactInputSingle():Promise<ethers.BigNumber>{
+export async function quote1ExactInputSingle(tokenIn:Token,tokenOut:Token,amountIn:number,poolFee:number):Promise<ethers.BigNumber>{
     const quoterContract = new ethers.Contract(
         QUOTER_CONTRACT_ADDRESS,
         Quoter.abi,
         getProvider()
     )
-    console.log("\n\nquoter1 contract:",QUOTER_CONTRACT_ADDRESS);
+    console.log("\n\nquote1ExactInputSingle");
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants();
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const sqrtPriceLimitX96 = 0;
     
     console.log("poolConstants.token1:",poolConstants.token1);
     console.log("poolConstants.token0:",poolConstants.token0);
     // console.log("amountIn:",CurrentConfig.tokens.amountIn);
     const quoteAmountQut = await quoterContract.callStatic.quoteExactInputSingle(
-        CurrentConfig.tokens.in.address,                                                // tokenIn
-        CurrentConfig.tokens.out.address,                                               // tokenOut
+        tokenIn.address,                                                // tokenIn
+        tokenOut.address,                                               // tokenOut
         poolConstants.fee,                                                              // fee
         fromReadableAmount(                                                             // amountIn
-            CurrentConfig.tokens.amountIn,  
-            CurrentConfig.tokens.in.decimals
+            amountIn,  
+            tokenIn.decimals
         ).toString(),
         sqrtPriceLimitX96                                                               // sqrtPriceLimit
     )
     // return toReadableAmount(quoteAmountQut,CurrentConfig.tokens.out.decimals);
-    console.log("quoter1 amountOut:",ethers.utils.formatUnits(quoteAmountQut.toString(),CurrentConfig.tokens.out.decimals));
+    console.log("quoter1 amountOut:",ethers.utils.formatUnits(quoteAmountQut.toString(),tokenOut.decimals));
     return quoteAmountQut;
 }
 
@@ -72,28 +73,28 @@ export async function quote1ExactInputSingle():Promise<ethers.BigNumber>{
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote2ExactInputSingle(){
+export async function quote2ExactInputSingle(tokenIn:Token,tokenOut:Token,amountIn:number,poolFee:number){
     const quoterContract = new ethers.Contract(
         QUOTER2_CONTRACT_ADDRESS,
         Quoter2.abi,
         getProvider()
     )
-    console.log("\n\nquoter2 contract:",QUOTER_CONTRACT_ADDRESS);
+    console.log("\n\nquote2ExactInputSingle");
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants();
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,CurrentConfig.tokens.poolFee);
     const sqrtPriceLimitX96 = 0;
     
     console.log("poolConstants.token1:",poolConstants.token1);
     console.log("poolConstants.token0:",poolConstants.token0);
     // console.log("amountIn:",CurrentConfig.tokens.amountIn);
     const params = {
-        tokenIn:CurrentConfig.tokens.in.address,                                                // tokenIn
-        tokenOut:CurrentConfig.tokens.out.address,                                               // tokenOut
+        tokenIn:tokenIn.address,                                                // tokenIn
+        tokenOut:tokenOut.address,                                               // tokenOut
         fee:poolConstants.fee,                                                              // fee
         amountIn:fromReadableAmount(                                                             // amountIn
-            CurrentConfig.tokens.amountIn,  
-            CurrentConfig.tokens.in.decimals
+            amountIn,  
+            tokenIn.decimals
         ).toString(),
         sqrtPriceLimitX96:sqrtPriceLimitX96       
     }
@@ -102,7 +103,7 @@ export async function quote2ExactInputSingle(){
     )
     console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
     console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
-    console.log("quoter2 amountOut:",ethers.utils.formatUnits(output.amountOut,CurrentConfig.tokens.out.decimals));
+    console.log("quoter2 amountOut:",ethers.utils.formatUnits(output.amountOut,tokenOut.decimals));
     console.log("gasEstimate:",output.gasEstimate.toString());
     return output;
 }
@@ -121,30 +122,30 @@ export async function quote2ExactInputSingle(){
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote1ExactInput():Promise<ethers.BigNumber>{
+export async function quote1ExactInput(tokenIn:Token,tokenMiddle:Token,tokenOut:Token,amountIn:number,poolFee:number):Promise<ethers.BigNumber>{
     const quoterContract = new ethers.Contract(
         QUOTER_CONTRACT_ADDRESS,
         Quoter.abi,
         getProvider()
     )
-    console.log("\n\nquoter1 contract:",QUOTER_CONTRACT_ADDRESS);
+    console.log("\n\nquote1ExactInput contract");
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants();
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,CurrentConfig.tokens.poolFee);
     let path = ethers.utils.solidityPack(
         ['address','uint24','address','uint24',"address"],
-        [WETH_TOKEN.address,3000,UNI_TOKEN.address,3000,USDC_TOKEN.address]
+        [tokenIn.address,poolFee,tokenMiddle.address,poolFee,tokenOut.address]
 
     )
 
     const quoteAmountQut = await quoterContract.callStatic.quoteExactInput(
         path,
         fromReadableAmount(
-            CurrentConfig.tokens.amountIn,
-            CurrentConfig.tokens.in.decimals
+            amountIn,
+            tokenIn.decimals
             )
     )
-    console.log("quoter2 amountOut:",ethers.utils.formatUnits(quoteAmountQut,CurrentConfig.tokens.out.decimals));
+    console.log("quoter2 amountOut:",ethers.utils.formatUnits(quoteAmountQut,tokenOut.decimals));
 
     return quoteAmountQut;
 }
@@ -163,36 +164,214 @@ export async function quote1ExactInput():Promise<ethers.BigNumber>{
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote2ExactInput(){
+export async function quote2ExactInput(tokenIn:Token,tokenMiddle:Token,tokenOut:Token,amountIn:number,poolFee:number){
     const quoterContract = new ethers.Contract(
         QUOTER2_CONTRACT_ADDRESS,
         Quoter2.abi,
         getProvider()
     )
-    console.log("\n\nquoter2 contract:",QUOTER_CONTRACT_ADDRESS);
+    console.log("\n\nquote2ExactInput");
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants();
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,CurrentConfig.tokens.poolFee);
     let path = ethers.utils.solidityPack(
         ['address','uint24','address','uint24',"address"],
-        [WETH_TOKEN.address,3000,UNI_TOKEN.address,3000,USDC_TOKEN.address]
+        [tokenIn.address,poolFee,tokenMiddle.address,poolFee,tokenOut.address]
 
     )
 
     const output = await quoterContract.callStatic.quoteExactInput(
         path,
         fromReadableAmount(
-            CurrentConfig.tokens.amountIn,
-            CurrentConfig.tokens.in.decimals
+            amountIn,
+            tokenIn.decimals
             )
     )
     console.log("sqrtPriceX96AfterList:",output.sqrtPriceX96AfterList);
     console.log("initializedTicksCrossedList:",output.initializedTicksCrossedList);
-    console.log("quoter2 amountOut:",ethers.utils.formatUnits(output.amountOut,CurrentConfig.tokens.out.decimals));
+    console.log("quoter2 amountOut:",ethers.utils.formatUnits(output.amountOut,tokenOut.decimals));
     console.log("gasEstimate:",output.gasEstimate.toString());
 
     return output;
 }
+
+
+
+/**
+ * UniswapV3 quoter1 contract 中的函数
+ * 支持单跳兑换的报价函数，指定输出代币的数量，获取输入代币的数量
+ * 在Quoter 合约中有4个报价函数
+ * quoteExactInputSingle - given the amount you want to swap, produces a quote for the amount out for a swap of a single pool
+ * quoteExactInput - given the amount you want to swap, produces a quote for the amount out for a swap over multiple pools
+ * quoteExactOutputSingle - given the amount you want to get out, produces a quote for the amount in for a swap over a single pool
+ * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
+ * @returns 
+ */
+export async function quote1ExactOutputSingle(tokenIn:Token,tokenOut:Token,amountOut:number,poolFee:number):Promise<ethers.BigNumber>{
+    const quoterContract = new ethers.Contract(
+        QUOTER_CONTRACT_ADDRESS,
+        Quoter.abi,
+        getProvider()
+    )
+    console.log("\n\nquote1ExactOutputSingle");
+
+    // 获取Pool合约相关变量
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
+    const sqrtPriceLimitX96 = 0;
+    
+    console.log("poolConstants.token1:",poolConstants.token1);
+    console.log("poolConstants.token0:",poolConstants.token0);
+    // console.log("amountIn:",CurrentConfig.tokens.amountIn);
+    const quoteAmountIn = await quoterContract.callStatic.quoteExactOutputSingle(
+        tokenIn.address,                                                // tokenIn
+        tokenOut.address,                                               // tokenOut
+        poolConstants.fee,                                                              // fee
+        fromReadableAmount(                                                             // amountIn
+            amountOut,  
+            tokenOut.decimals
+        ).toString(),
+        sqrtPriceLimitX96                                                               // sqrtPriceLimit
+    )
+    // return toReadableAmount(quoteAmountQut,CurrentConfig.tokens.out.decimals);
+    console.log("quoter1 amountIn:",ethers.utils.formatUnits(quoteAmountIn.toString(),tokenIn.decimals));
+    return quoteAmountIn;
+}
+
+
+/**
+ * UniswapV3 quoter2 contract 中的函数
+ * 只支持单跳兑换的报价函数,指定输出代币的数量，获取输入代币的数量
+ * 在Quoter 合约中有4个报价函数
+ * quoteExactInputSingle - given the amount you want to swap, produces a quote for the amount out for a swap of a single pool
+ * 该函数还会返回以下参数：
+ * sqrtPriceX96After：假设该笔交易成功之后的sqrtPriceX96
+ * initializedTicksCrossed 
+ * gasEstimate
+ *               
+ * quoteExactInput - given the amount you want to swap, produces a quote for the amount out for a swap over multiple pools
+ * quoteExactOutputSingle - given the amount you want to get out, produces a quote for the amount in for a swap over a single pool
+ * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
+ * @returns 
+ */
+export async function quote2ExactOutputSingle(tokenIn:Token,tokenOut:Token,amountOut:number,poolFee:number){
+    const quoterContract = new ethers.Contract(
+        QUOTER2_CONTRACT_ADDRESS,
+        Quoter2.abi,
+        getProvider()
+    )
+    console.log("\n\nquote2ExactOutputSingle");
+
+    // 获取Pool合约相关变量
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
+    const sqrtPriceLimitX96 = 0;
+    
+    console.log("poolConstants.token1:",poolConstants.token1);
+    console.log("poolConstants.token0:",poolConstants.token0);
+    const params = {
+        tokenIn:tokenIn.address,                                                // tokenIn
+        tokenOut:tokenOut.address,                                               // tokenOut
+        fee:poolFee,                                                              // fee
+        amount:fromReadableAmount(                                                             // amountIn
+            amountOut,  
+            tokenOut.decimals
+        ).toString(),
+        sqrtPriceLimitX96:sqrtPriceLimitX96       
+    }
+    const output = await quoterContract.callStatic.quoteExactOutputSingle(
+        params                                                            // sqrtPriceLimit
+    )
+    // console.log("output:",output);
+    console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
+    console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
+    console.log("quoter2 amountIn:",ethers.utils.formatUnits(output.amountIn,tokenIn.decimals));
+    console.log("gasEstimate:",output.gasEstimate.toString());
+    return output;
+}
+
+
+/**
+ * UniswapV3 quoter1 contract 中的函数quoteExactOutput
+ * 支持多跳兑换的报价函数
+ * 该函数内部调用的是 quoteExactOutputSingle
+ * 但是该函数支持多跳调用，比如WETH->UNI->USDC
+ * 指定输入代币的数量，获取输出代币的数量，在一个pool 中
+ * 在Quoter 合约中有4个报价函数
+ * quoteExactInputSingle - given the amount you want to swap, produces a quote for the amount out for a swap of a single pool
+ * quoteExactInput - given the amount you want to swap, produces a quote for the amount out for a swap over multiple pools
+ * quoteExactOutputSingle - given the amount you want to get out, produces a quote for the amount in for a swap over a single pool
+ * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
+ * @returns 
+ */
+export async function quote1ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut:Token,amountOut:number,poolFee:number):Promise<ethers.BigNumber>{
+    const quoterContract = new ethers.Contract(
+        QUOTER_CONTRACT_ADDRESS,
+        Quoter.abi,
+        getProvider()
+    )
+    console.log("\n\nquote1ExactOutput");
+
+    let path = ethers.utils.solidityPack(
+        ['address','uint24','address','uint24',"address"],
+        [tokenOut.address,poolFee,tokenMiddle.address,poolFee,tokenIn.address]
+
+    )
+
+    const quoteAmountIn = await quoterContract.callStatic.quoteExactOutput(
+        path,
+        fromReadableAmount(
+            amountOut,
+            tokenOut.decimals
+            )
+    )
+    console.log("quoter1 amountIn:",ethers.utils.formatUnits(quoteAmountIn,tokenIn.decimals));
+
+    return quoteAmountIn;
+}
+
+
+
+/**
+ * UniswapV3 quoter1 contract 中的函数quoteExactOutput
+ * 支持多跳兑换的报价函数
+ * 该函数内部调用的是quoteExactOutputSingle
+ * 但是该函数支持多跳调用，比如WETH->UNI->USDC
+ * 指定输入代币的数量，获取输出代币的数量，在一个pool 中
+ * 在Quoter 合约中有4个报价函数
+ * quoteExactInputSingle - given the amount you want to swap, produces a quote for the amount out for a swap of a single pool
+ * quoteExactInput - given the amount you want to swap, produces a quote for the amount out for a swap over multiple pools
+ * quoteExactOutputSingle - given the amount you want to get out, produces a quote for the amount in for a swap over a single pool
+ * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
+ * @returns 
+ */
+export async function quote2ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut:Token,amountOut:number,poolFee:number){
+    const quoterContract = new ethers.Contract(
+        QUOTER2_CONTRACT_ADDRESS,
+        Quoter2.abi,
+        getProvider()
+    )
+    console.log("\n\nquote2ExactOutput");
+
+    let path = ethers.utils.solidityPack(
+        ['address','uint24','address','uint24',"address"],
+        [tokenOut.address,3000,tokenMiddle.address,3000,tokenIn.address]
+
+    )
+
+    const output = await quoterContract.callStatic.quoteExactOutput(
+        path,
+        fromReadableAmount(
+            amountOut,
+            tokenOut.decimals
+            )
+    )
+    console.log("sqrtPriceX96AfterList:",output.sqrtPriceX96AfterList);
+    console.log("initializedTicksCrossedList:",output.initializedTicksCrossedList);
+    console.log("quoter2 amountIn:",ethers.utils.formatUnits(output.amountIn,tokenIn.decimals));
+    console.log("gasEstimate:",output.gasEstimate.toString());
+
+    return output;
+}
+
 
 /**
  * 获取一个结构对象
@@ -205,7 +384,7 @@ export async function quote2ExactInput(){
  * 同步查询而不是顺序查询，是因为顺序查询有可能产生两个区块的数据不一致的问题。
  * @returns 
  */
-export async function getPoolConstants():Promise<{
+export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:number):Promise<{
     token0:string,
     token1:string,
     fee:number,
@@ -215,9 +394,9 @@ export async function getPoolConstants():Promise<{
     const currentPoolAddress = computePoolAddress(
         {
             factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
-            tokenA:CurrentConfig.tokens.in,
-            tokenB:CurrentConfig.tokens.out,
-            fee: CurrentConfig.tokens.poolFee
+            tokenA:tokenIn,
+            tokenB:tokenOut,
+            fee:poolFee
         }
     )
 

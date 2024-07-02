@@ -70,6 +70,14 @@ export const UNI_TOKEN = new Token(
   'UNI'
 )
 
+export const APE_TOKEN = new Token(
+  CHAINID,
+  '0x4d224452801ACEd8B2F0aebE155379bb5D594381',
+  18,
+  'APE',
+  'APE'
+)
+
 export const MAX_FEE_PER_GAS = 100000000000
 export const MAX_PRIORITY_FEE_PER_GAS = 100000000000
 export const TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER = 2000

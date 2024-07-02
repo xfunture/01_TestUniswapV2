@@ -1,6 +1,6 @@
 import { Token } from '@uniswap/sdk-core';
 import { FeeAmount } from '@uniswap/v3-sdk';
-import {WETH_TOKEN,USDC_TOKEN,DAI_TOKEN,UNI_TOKEN} from './libs/constants';
+import {WETH_TOKEN,USDC_TOKEN,DAI_TOKEN,UNI_TOKEN, APE_TOKEN} from './libs/constants';
 import { WETH } from '@uniswap/sdk';
 require("dotenv").config();
 
@@ -26,6 +26,7 @@ export interface ExampleConfig {
     tokens:{
         in:Token,
         amountIn:number,
+        amountOut:number,
         out:Token,
         poolFee:number
     }
@@ -45,7 +46,8 @@ export const CurrentConfig:ExampleConfig = {
     },
     tokens:{
         in:WETH_TOKEN,
-        amountIn:0.02,
+        amountIn:0.02,                // 用于指定输入代币的数量，计算能获得多少输出代币
+        amountOut:69.762944,                 // 用于指定输出代币的数量，计算需要多少输入代币
         out:USDC_TOKEN,
         poolFee:FeeAmount.MEDIUM,
     }
