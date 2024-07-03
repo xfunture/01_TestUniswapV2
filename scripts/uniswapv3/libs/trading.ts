@@ -4,7 +4,7 @@ import { ethers, providers, BigNumber } from 'ethers';
 import { JSBI } from 'jsbi';
 
 import { CurrentConfig } from '../config';
-import { ERC20_ABI, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS } from './constants';
+import { ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS } from './constants';
 import { getPoolInfo } from './pool';
 import {
     getProvider,
@@ -69,7 +69,7 @@ export async function executeTrade(
     }
 
     // Give approval to the router to spend the token
-    const tokenApproval = await getTokenTransferApproval(CurrentConfig.tokens.in);
+    const tokenApproval = await getTokenTransferApproval(UNISWAPV3_ROUTER_ADDRESS,CurrentConfig.tokens.in,CurrentConfig.tokens.amountIn);
 
     // Fail if transfer approvals do not go through
     if(tokenApproval.status == 0){
@@ -86,7 +86,7 @@ export async function executeTrade(
 
     const tx = {
         data:methodParameters.calldata,
-        to:SWAP_ROUTER_ADDRESS,
+        to:UNISWAPV3_ROUTER_ADDRESS,
         value:methodParameters.value,
         from:walletAddress,
         // maxFeePerGas:MAX_FEE_PER_GAS,
@@ -130,8 +130,9 @@ export async function getOutputQuote(route:Route<Currency,Currency>){
 
 }
 
-export async function getTokenTransferApproval(
-    token:Token
+export async function getTokenTransferApproval(routerAddress:string,
+    token:Token,
+    amountIn:number
 ):Promise<ethers.providers.TransactionReceipt>{
     const provider = getProvider();
     const address = getWalletAddress()
@@ -146,9 +147,9 @@ export async function getTokenTransferApproval(
     )
 
     const transaction = await tokenContract.populateTransaction.approve(
-        SWAP_ROUTER_ADDRESS,
+        routerAddress,
         fromReadableAmount(
-            CurrentConfig.tokens.amountIn,
+            amountIn,
             token.decimals
         ).toString()
     )
@@ -175,7 +176,7 @@ export async function getOutTokenTransferApproval(
     )
 
     const transaction = await tokenContract.populateTransaction.approve(
-        SWAP_ROUTER_ADDRESS,
+        UNISWAPV3_ROUTER_ADDRESS,
         amountOut
     )
 

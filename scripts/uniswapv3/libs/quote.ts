@@ -385,13 +385,14 @@ export async function quote2ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut
  * @returns 
  */
 export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:number):Promise<{
+    poolAddress:string,
     token0:string,
     token1:string,
     fee:number,
     liquidity:ethers.BigNumber,
     slot0:ethers.BigNumber
 }>{
-    const currentPoolAddress = computePoolAddress(
+    const poolAddress = computePoolAddress(
         {
             factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
             tokenA:tokenIn,
@@ -400,9 +401,9 @@ export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:numb
         }
     )
 
-    console.log("currentPoolAddress:",currentPoolAddress);
+    console.log("currentPoolAddress:",poolAddress);
     const poolContract = new ethers.Contract(
-        currentPoolAddress,
+        poolAddress,
         IUniswapV3PoolABI.abi,
         getProvider()
     )
@@ -414,6 +415,7 @@ export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:numb
         poolContract.slot0(),
     ])
     return {
+        poolAddress,
         token0,
         token1,
         fee,

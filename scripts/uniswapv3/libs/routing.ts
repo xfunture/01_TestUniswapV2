@@ -18,7 +18,7 @@ import {
     MAX_PRIORITY_FEE_PER_GAS,
     ERC20_ABI,
     TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER,
-    SWAP_ROUTER_ADDRESS,
+    UNISWAPV3_ROUTER_ADDRESS,
     CHAINID,
   } from './constants'
   import { ethers } from 'ethers'
@@ -72,7 +72,7 @@ import { getTokenTransferApproval } from './trading';
 
     const res = await sendTransaction({
         data:route.methodParameters?.calldata,
-        to:SWAP_ROUTER_ADDRESS,
+        to:UNISWAPV3_ROUTER_ADDRESS,
         value:route?.methodParameters?.value,
         from:walletAddress,
         maxFeePerGas:MAX_FEE_PER_GAS,

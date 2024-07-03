@@ -6,12 +6,13 @@ import { createTrade, getOutTokenTransferApproval, getTokenTransferApproval } fr
 import { getOutputQuote,TokenTrade} from './libs/trading';
 import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
-import { fromReadableAmount } from './libs/utils';
+import { createDeadLine, fromReadableAmount } from './libs/utils';
 import { JSBI } from 'jsbi';
 import { getProvider, getWalletAddress, sendTransaction ,wallet} from './libs/providers';
 import { generateRoute } from './libs/routing';
-import { APE_TOKEN, DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, SWAP_ROUTER_ADDRESS, TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER, UNI_TOKEN, USDC_TOKEN, WETH_TOKEN } from './libs/constants';
+import { APE_TOKEN, DAI_TOKEN, ERC20_ABI, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, QUOTER_CONTRACT_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, TOKEN_AMOUNT_TO_APPROVE_FOR_TRANSFER, UNI_TOKEN, USDC_TOKEN, WETH_TOKEN, UNISWAPV3_ROUTER2_ADDRESS } from './libs/constants';
 import { ethers, BigNumber, BigNumberish, Wallet } from 'ethers';
+import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
 import * as fs from 'fs';
 
@@ -25,9 +26,10 @@ const USDC_CONTRACT_ABI = fs.readFileSync("./contracts/abis/USDCAbi.json").toStr
 const minTokenAbi = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}]
 const USDC_CONTRACT = new ethers.Contract(USDC_CONTRACT_ADDRESS,minTokenAbi,wallet);
 
-const UNISWAPV3_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
-const UNISWAPV3_CONTRACT_ABI = fs.readFileSync("./contracts/abis/UniswapV3RouterAbi.json").toString();
-const UNISWAPV3_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER_ADDRESS,UNISWAPV3_CONTRACT_ABI,wallet);
+const UNISWAPV3_ROUTER_ABI = fs.readFileSync("./contracts/abis/UniswapV3RouterAbi.json").toString();
+const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2Abi.json").toString();
+const UNISWAPV3_ROUTER_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER_ADDRESS,UNISWAPV3_ROUTER_ABI,wallet);
+const UNISWAPV3_ROUTER2_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER2_ADDRESS,UNISWAPV3_ROUTER2_ABI,wallet);
 
 
 
@@ -122,7 +124,7 @@ async function firstDemo(){
 
     /*********************************************approve*********************************************************************************************/
     // Give approval to the router to spend the token
-    let tokenApprovalReceipt = await getTokenTransferApproval(CurrentConfig.tokens.in);
+    let tokenApprovalReceipt = await getTokenTransferApproval(UNISWAPV3_ROUTER_ADDRESS,CurrentConfig.tokens.in,CurrentConfig.tokens.amountIn);
     let approvalFee = calculateFee(tokenApprovalReceipt);
     console.log(`in tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
 
@@ -147,7 +149,7 @@ async function firstDemo(){
     console.log("value:",methodParameters.value);
     const tx = {
         data:methodParameters.calldata,
-        to:SWAP_ROUTER_ADDRESS,
+        to:UNISWAPV3_ROUTER_ADDRESS,
         value:amountInHex,
         from:walletAddress,
         gasLimit:ethers.utils.hexlify(500000)
@@ -262,10 +264,19 @@ async function testMultiHopSwap(){
 
     const output = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
 
+    console.log("wallet address:",wallet.address);
+    console.log("UniswapV3Router address:",UNISWAPV3_ROUTER2_CONTRACT.address);
+    console.log("amountIn:",ethers.utils.parseUnits(amountIn.toString(),tokenIn.decimals).toHexString());
+    console.log("output.amountOut:",output.amountOut.toHexString());
 
-    console.log("UniswapV3Router address:",UNISWAPV3_CONTRACT.address);
-    console.log("output.amountOut:",output.amountOut);
 
+    let tokenApprovalReceipt = await getTokenTransferApproval(UNISWAPV3_ROUTER_ADDRESS,tokenIn,amountIn);
+
+    let approvalFee = calculateFee(tokenApprovalReceipt);
+    console.log(`in tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
+
+
+    // 测试exactInputSingle 函数
     // struct ExactInputSingleParams {
     //     address tokenIn;
     //     address tokenOut;
@@ -275,19 +286,187 @@ async function testMultiHopSwap(){
     //     uint256 amountOutMinimum;
     //     uint160 sqrtPriceLimitX96;
     // }
-
+    // fromReadableAmount(amountIn,tokenIn.decimals),
     const params = {
         tokenIn:tokenIn.address,
         tokenOut:tokenOut.address,
         fee:poolFee,
         recipient:wallet.address,
-        amountIn:fromReadableAmount(amountIn,tokenIn.decimals),
-        amountOutMinimum:output.amoutOut,
+        deadline:createDeadLine(),
+        amountIn:ethers.utils.parseUnits(amountIn.toString(),tokenIn.decimals),
+        amountOutMinimum:output.amountOut.toHexString(),
         sqrtPriceLimitX96:sqrtPriceLimitX96
     }
 
-    const pool = await UNISWAPV3_CONTRACT.callStatic.exactInputSingle(params);
-    // console.log(pool);
+    const rawTxn = await UNISWAPV3_ROUTER_CONTRACT.populateTransaction.exactInputSingle(
+        params,
+        {
+            gasLimit:ethers.utils.hexlify(1000000),
+            // maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            value:ethers.utils.parseEther('0.5')
+        });
+
+    console.log(rawTxn);
+
+    const sendTxn = await wallet.sendTransaction(rawTxn);
+
+    let reciept = (await sendTxn).wait();
+
+    console.log("sendTxn:",sendTxn);
+    console.log("reciept:",reciept);
+
+
+
+
+
+    // 测试 exactInput 函数
+    // struct ExactInputParams {
+    //     bytes path;
+    //     address recipient;
+    //     uint256 amountIn;
+    //     uint256 amountOutMinimum;
+    // }
+
+
+    // let tokenApprovalReceipt = await getTokenTransferApproval(UNISWAPV3_ROUTER_ADDRESS,tokenIn,amountIn);
+
+    // let approvalFee = calculateFee(tokenApprovalReceipt);
+    // console.log(`in tokenApprovalFee: ${ethers.utils.formatEther(approvalFee)}`);
+
+    // const amountOutMininum = output.amountOut;
+    // const path = ethers.utils.solidityPack(
+    //         ['address','uint24','address'],
+    //         [tokenIn.address,poolFee,tokenOut.address]
+    //     )
+
+    // const params = {
+    //     path:path,
+    //     recipient:wallet.address,
+    //     amountIn:ethers.utils.parseUnits(amountIn.toString(),tokenIn.decimals).toHexString(),
+    //     amountOutMininum:0
+    // }
+
+    // const rawTxn = await UNISWAPV3_ROUTER_CONTRACT.callStatic.exactInput(params);
+    // console.log(rawTxn);
+
+
+
+
+}
+
+
+async function getPoolImmutables(poolContract:ethers.Contract){
+    const [token0,token1,fee ] = await Promise.all([
+        poolContract.token0(),
+        poolContract.token1(),
+        poolContract.fee()
+    ])
+    return {token0:token0,token1:token1,fee:fee}
+}
+
+async function getPoolState(poolContract:ethers.Contract){
+    const slot = poolContract.slot0();
+    const state = {
+        sqrtPriceX96:slot[0]
+    }
+    return state;
+}
+
+async function testMultiHopSwapV2(){
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = DAI_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,3000);
+
+    const poolContract = new ethers.Contract(
+        poolConstants.poolAddress,
+        IUniswapV3PoolABI.abi,
+        getProvider()
+    )
+
+    const immutables = await getPoolImmutables(poolContract);
+    const state = getPoolState(poolContract);
+
+    console.log("immutables:",immutables);
+    console.log("wallet:",wallet);
+
+
+
+    const router_address = UNISWAPV3_ROUTER_ADDRESS;
+    const router_abi = UNISWAPV3_ROUTER_ABI;
+    const swapRouterContract = new ethers.Contract(router_address,router_abi,wallet);
+
+    const amountIn = ethers.utils.parseUnits(inputAmount.toString(),tokenIn.decimals);
+
+    const approvalAmount = amountIn;
+
+    const tokenContract = new ethers.Contract(immutables.token1,ERC20_ABI,wallet);
+
+    const approvalResponse = await tokenContract.approve(
+        router_address,
+        approvalAmount.toString(),
+    );
+
+    const output = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
+    console.log("output:",output);
+    console.log("output amountOut:",output.amountOut);
+
+    const nonce = await wallet.getTransactionCount();
+    console.log("nonce:",nonce);
+
+
+    const params = {
+        tokenIn:immutables.token1,
+        tokenOut:immutables.token0,
+        fee:immutables.fee,
+        recipient:wallet.address,
+        // deadline:createDeadLine(),
+        amountIn:amountIn.toHexString(),
+        amountOutMinimum:output.amountOut.toHexString(),
+        sqrtPriceLimitX96:BigNumber.from('0').toHexString(),
+        nonce:nonce
+    }
+
+    // const params = {
+    //     tokenIn:immutables.token1,
+    //     tokenOut:immutables.token0,
+    //     fee:immutables.fee,
+    //     recipient:wallet.address,
+    //     deadline:createDeadLine(),
+    //     amountIn:amountIn,
+    //     amountOutMinimum:0,
+    //     sqrtPriceLimitX96:0,
+    //     nonce:nonce
+    // }
+
+    // swapRouterContract.functions.execute()
+    console.log("params:",params);
+    const transaction = swapRouterContract.exactInputSingle(
+        params,
+        {
+            gasLimit:ethers.utils.hexlify(10000000),
+            value:amountIn,
+            // gasPrice: ethers.utils.parseUnits('10', 'gwei'),
+            // maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
+            // nonce:nonce
+            // type:TradeType.EXACT_INPUT
+        }
+
+    )
+
+    console.log("transaction:",transaction);
+    
+
+
+
+
 
 
 }
@@ -299,10 +478,12 @@ async function main(){
     // await firstDemo();
 
 
-    testQuote();
+    // testQuote();
 
 
     // testMultiHopSwap();
+
+    testMultiHopSwapV2();
 
 
 
