@@ -42,7 +42,6 @@ describe("UniswapV3 swap",function(){
 
             console.log("\towner:",owner.address);
             console.log("\tuniswapV3Swap msg.sender:",await uniswapv3Swap.owner());
-            console.log("\tuniswapV3Swap msg.sender:",await uniswapv3Swap.owner());
             const exactInputSingleAmountOut = await uniswapv3Swap.swapExactInputSingleHop(amountIn,amountOut);
             console.log("\texactInputSingleAmountOut:",exactInputSingleAmountOut);
 
