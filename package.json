@@ -18,11 +18,13 @@
     "@uniswap/v2-sdk": "^4.4.1",
     "@uniswap/v3-sdk": "^3.13.1",
     "dotenv": "^16.4.5",
-    "ethers": "5.7",
-    "hardhat": "^2.22.5",
     "jsbi": "^3.2.5"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0"
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.11",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.4.2",
+    "ethers": "^6.13.1",
+    "hardhat": "^2.22.6"
   }
 }
