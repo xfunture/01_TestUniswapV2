@@ -1,12 +1,11 @@
 import { CurrentConfig,Enviroment} from '../config';
 import { BaseProvider } from '@ethersproject/providers';
-import { BigNumber,ethers,providers } from 'ethers';
+import { BigNumberish,ethers } from 'ethers';
 
 // Single copies of provider and wallet
 const mainnetProvider = new ethers.JsonRpcProvider(
     CurrentConfig.rpc.mainnet
 )
-
 
 export const wallet = createWallet();
 
@@ -21,13 +20,13 @@ export enum TransactionState{
 }
 
 // Provider Functions
-export function getProvider():providers.Provider{
+export function getProvider():ethers.JsonRpcApiProvider{
     let rpc_url = CurrentConfig.rpc.local;
     // console.log("getProvider:",rpc_url);
-    return new ethers.providers.JsonRpcProvider(rpc_url);
+    return new ethers.JsonRpcProvider(rpc_url);
 }
 
-export function getMainnetProvider():BaseProvider{
+export function getMainnetProvider():ethers.JsonRpcProvider{
     return mainnetProvider;
 }
 
@@ -46,22 +45,22 @@ export function getWalletAddress():string{
 function createWallet():ethers.Wallet{
     let provider = getProvider();
     if(CurrentConfig.env == Enviroment.LOCAL){
-        provider = new ethers.providers.JsonRpcProvider(CurrentConfig.rpc.local);
+        provider = new ethers.JsonRpcProvider(CurrentConfig.rpc.local);
     }
     return new ethers.Wallet(CurrentConfig.wallet.privateKey,provider);
 }
 
 export async function sendTransaction(
-    transaction:ethers.providers.TransactionRequest
-):Promise<ethers.providers.TransactionReceipt>{
+    transaction:ethers.TransactionRequest
+):Promise<ethers.TransactionReceipt>{
     return sendTransactionViaWallet(transaction)
 }
 
 async function sendTransactionViaWallet(
-    transaction:ethers.providers.TransactionRequest
-):Promise<ethers.providers.TransactionReceipt>{
+    transaction:ethers.TransactionRequest
+):Promise<ethers.TransactionReceipt>{
     if(transaction.value){
-        transaction.value = BigNumber.from(transaction.value)
+        transaction.value = BigInt(transaction.value)
     }
     const txRes = await wallet.sendTransaction(transaction);
 

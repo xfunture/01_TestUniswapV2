@@ -1,0 +1,1 @@
+import { CurrentConfig } from './config';

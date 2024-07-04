@@ -5,12 +5,19 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import '@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol';
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 
+import "./interfaces/ISwapRouter02.sol";
+import "./interfaces/IV3SwapRouter.sol";
+
+
 
 contract UniswapV3SingleHopSwap{
+
+    using LowGasSafeMath for uint256;
 
     address public owner;
 
@@ -22,31 +29,80 @@ contract UniswapV3SingleHopSwap{
     IWETH private constant weth = IWETH(WETH);
     IERC20 private constant dai = IERC20(DAI);
 
+    ISwapRouter02 public immutable uniswapRouter;
+    
 
+// Router1 
+//  struct ExactInputSingleParams {
+//     address tokenIn;
+//     address tokenOut;
+//     uint24 fee;
+//     address recipient;
+//     uint256 deadline;
+//     uint256 amountIn;
+//     uint256 amountOutMinimum;
+//     uint160 sqrtPriceLimitX96;
+// }
+   
 
-    constructor(){
+//Router2
+//   struct ExactOutputSingleParams {
+//         address tokenIn;
+//         address tokenOut;
+//         uint24 fee;
+//         address recipient;
+//         uint256 amountOut;
+//         uint256 amountInMaximum;
+//         uint160 sqrtPriceLimitX96;
+//     }
+
+    constructor(address _uniswapRouter){
         owner = msg.sender;
+        uniswapRouter = ISwapRouter02(_uniswapRouter);
+
     }
 
-    function swapExactInputSingleHop(uint amountIn,uint amountOutMin)
-        external
+    function swapExactInputSingleHop(
+        address token0,
+        address token1,
+        uint256 amountIn,
+        uint256 fee
+        )
+        external returns (uint256 amountOut)
     {
         weth.transferFrom(msg.sender,address(this),amountIn);
         weth.approve(address(router),amountIn);
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams(
                 {
-                    tokenIn:WETH,
-                    tokenOut:DAI,
-                    fee:3000,
+                    tokenIn:token0,
+                    tokenOut:token1,
+                    fee:uint24(fee),
                     recipient:msg.sender,
-                    deadline:block.timestamp,
                     amountIn:amountIn,
-                    amountOutMinimum:amountOutMin,
+                    amountOutMinimum:0,
                     sqrtPriceLimitX96:0
                 }
             );
-            router.exactInputSingle(params);
+
+
+        (bool success, bytes memory amountBytes) = address(uniswapRouter).call(
+            abi.encodeWithSelector(
+                IV3SwapRouter.exactInputSingle.selector,
+                params
+            )
+        );
+        return bytesToUint(amountBytes);
     }
+
+
+    function bytesToUint(bytes memory _bytes) internal pure returns (uint256 value) {
+        assembly {
+            value := mload(add(_bytes, 0x20))
+        }
+    }
+
+    
 
 }
