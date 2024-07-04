@@ -15,6 +15,7 @@ import { ethers, BigNumber, BigNumberish, Wallet } from 'ethers';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
 import * as fs from 'fs';
+import { callContractMethod } from './libs/contractUtils';
 
 const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toString();
 const WETH_CONTRACT_ABI  = fs.readFileSync("./contracts/abis/WETHAbi.json").toString();
@@ -372,6 +373,15 @@ async function getPoolState(poolContract:ethers.Contract){
     return state;
 }
 
+/**
+ * 测试UniswapV3 中的exactInputSingle 进行代币交换，但是一直报错
+ * UniswapV3 router 和 UniswapV3 router2 两个Router 地址进行调用exactInputSingle
+ * UniswapV3 router 报的错是
+ * Error: Transaction reverted without a reason string
+ * UniswapV3 router2 报的错是：
+ * reverted with reason string "STF"
+ */
+
 async function testMultiHopSwapV2(){
 
     const tokenIn:Token = WETH_TOKEN;
@@ -409,10 +419,7 @@ async function testMultiHopSwapV2(){
 
     const tokenContract = new ethers.Contract(immutables.token1,ERC20_ABI,wallet);
 
-    const approvalResponse = await tokenContract.approve(
-        router_address,
-        approvalAmount.toString(),
-    );
+        
 
     const output = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
     console.log("output:",output);
@@ -422,50 +429,108 @@ async function testMultiHopSwapV2(){
     console.log("nonce:",nonce);
 
 
-    const params = {
-        tokenIn:immutables.token1,
-        tokenOut:immutables.token0,
+    const router1Params = {
+        tokenIn:tokenIn.address,
+        tokenOut:tokenOut.address,
         fee:immutables.fee,
         recipient:wallet.address,
-        // deadline:createDeadLine(),
+        deadline:createDeadLine(),
         amountIn:amountIn.toHexString(),
-        amountOutMinimum:output.amountOut.toHexString(),
-        sqrtPriceLimitX96:BigNumber.from('0').toHexString(),
-        nonce:nonce
+        amountOutMinimum:0,
+        sqrtPriceLimitX96:0
     }
 
-    // const params = {
-    //     tokenIn:immutables.token1,
-    //     tokenOut:immutables.token0,
-    //     fee:immutables.fee,
-    //     recipient:wallet.address,
-    //     deadline:createDeadLine(),
-    //     amountIn:amountIn,
-    //     amountOutMinimum:0,
-    //     sqrtPriceLimitX96:0,
-    //     nonce:nonce
-    // }
+
+    const router2Params = {
+        tokenIn:tokenIn.address,
+        tokenOut:tokenOut.address,
+        fee:immutables.fee,
+        recipient:wallet.address,
+        amountIn:amountIn.toHexString(),
+        amountOutMinimum:0,
+        sqrtPriceLimitX96:0,
+    }
+    console.log("params:",router2Params);
+
+   
+    const approvalReceipt = await getTokenTransferApproval(router_address,tokenIn,inputAmount);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.utils.formatUnits(approvalFee,tokenIn.decimals)}`);
 
     // swapRouterContract.functions.execute()
-    console.log("params:",params);
-    const transaction = swapRouterContract.exactInputSingle(
-        params,
+    const transaction = await swapRouterContract.populateTransaction.exactInputSingle(
+        router1Params,
         {
             gasLimit:ethers.utils.hexlify(10000000),
-            value:amountIn,
+            // value:amountIn,
             // gasPrice: ethers.utils.parseUnits('10', 'gwei'),
             // maxPriorityFeePerGas:ethers.utils.parseUnits("1","gwei")
             // nonce:nonce
             // type:TradeType.EXACT_INPUT
         }
-
     )
 
+    const sendTx = await wallet.sendTransaction(transaction);
+
+    const receipt = await sendTx.wait();
+
+
     console.log("transaction:",transaction);
+    console.log("sendTx:",sendTx);
+    console.log("receipt:",receipt);
     
 
 
 
+
+
+
+}
+
+
+async function testMultiHopSwapV3(){
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = DAI_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+    const provider = getProvider();
+
+    const amountIn = fromReadableAmount(inputAmount,tokenIn.decimals).toString();
+    const gasPrice:BigNumber = await provider.getGasPrice();
+
+    const router_address = UNISWAPV3_ROUTER_ADDRESS;
+    const router_abi = UNISWAPV3_ROUTER_ABI;
+
+    console.log("Target symbol: ",tokenOut.symbol);
+    console.log(`Input  symbol: ${tokenIn.symbol}`);
+    console.log(`Input  inputAmount: ${inputAmount}`);
+    console.log("gasPrice:",gasPrice.toBigInt());
+
+    const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
+    const swapRouterContract = new ethers.Contract(router_address,router_abi,wallet);
+
+    const txResponse = await callContractMethod(tokenInContract,"approve",[router_address,amountIn],gasPrice);
+    console.log("approve txResponse:",txResponse);
+
+    const swapTxInputs = [
+        tokenIn.address,
+        tokenOut.address,
+        3000,
+        wallet.address,
+        createDeadLine(),
+        amountIn,
+        0,
+        0
+    ]
+    const swapTxResponse = await callContractMethod(swapRouterContract, 'exactInputSingle', [swapTxInputs], gasPrice);
+    console.log("swapTxResponse:",swapTxResponse);
+
+
+    
 
 
 
@@ -481,9 +546,11 @@ async function main(){
     // testQuote();
 
 
-    // testMultiHopSwap();
+    // testMultiHopSwap();      // 失败，无法调用成功
 
-    testMultiHopSwapV2();
+    // testMultiHopSwapV2();    // 失败，无法调用成功，UniswapV3 router 原因是Error: Transaction reverted without a reason string'，UniswapV3 router2 的原因是STF
+
+    testMultiHopSwapV3();      // 失败，无法调用成功，UniswapV3 router 原因是Error: Transaction reverted without a reason string'
 
 
 
