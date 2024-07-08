@@ -58,7 +58,7 @@ import TOKEN_IN_ABI from './abis/weth.json';
 
 
 // const rpcUrl = 'https://eth-sepolia.g.alchemy.com/v2/f9yqqeMqy1RDCFh-H_WQKAatBjhq1Oa_'
-// const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2'
+// const privateKey = ''
 
 // const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2Abi.json").toString();
 
