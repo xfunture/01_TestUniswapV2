@@ -129,7 +129,9 @@ export async function getOutputQuote(route:Route<Currency,Currency>){
 
 }
 
-export async function getTokenTransferApproval(routerAddress:string,
+export async function getTokenTransferApproval(
+    tokenContract:ethers.Contract,
+    routerAddress:string,
     token:Token,
     amountIn:number
 ):Promise<ethers.TransactionReceipt>{
@@ -139,11 +141,6 @@ export async function getTokenTransferApproval(routerAddress:string,
         throw new Error("no provider");
     }
 
-    const tokenContract = new ethers.Contract(
-        token.address,
-        ERC20_ABI,
-        provider
-    )
 
     const transaction = await tokenContract.approve.populateTransaction(
         routerAddress,

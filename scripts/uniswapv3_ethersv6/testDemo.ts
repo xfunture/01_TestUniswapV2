@@ -25,6 +25,7 @@ import QUOTER_ABI from './abis/quoter.json';
 import SWAP_ROUTER_ABI from './abis/swaprouter.json' ;
 import POOL_ABI from './abis/pool.json' ;
 import TOKEN_IN_ABI from './abis/weth.json';
+import { sign } from 'web3/lib/commonjs/eth.exports';
 
 
 
@@ -37,7 +38,7 @@ import TOKEN_IN_ABI from './abis/weth.json';
 // const QUOTER_CONTRACT_ADDRESS = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
 // const POOL_FACTORY_CONTRACT_ADDRESS = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 
-// /*******************************************************************sepolia 测试链********************************************************************* */
+/*******************************************************************sepolia 测试链********************************************************************* */
 // const chainid = 11155111;
 //  const WETH_TOKEN = new Token(
 //     chainid,
@@ -56,19 +57,31 @@ import TOKEN_IN_ABI from './abis/weth.json';
 // );
 
 
+// /*****sepolia 线上环境******** */
+// // const rpcUrl = 'https://eth-sepolia.g.alchemy.com/v2/f9yqqeMqy1RDCFh-H_WQKAatBjhq1Oa_'
+// // const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2'
+// /*****sepolia 线上环境******** */
 
-// const rpcUrl = 'https://eth-sepolia.g.alchemy.com/v2/f9yqqeMqy1RDCFh-H_WQKAatBjhq1Oa_'
-// const privateKey = ''
+// /*****sepolia 本地环境******** */
+// const rpcUrl = "http://localhost:8545";
+// const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+// // const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+// // const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2';
+// /*****sepolia 本地环境******** */
+
 
 // const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2Abi.json").toString();
 
 // const POOL_FACTORY_CONTRACT_ADDRESS = '0x0227628f3F023bb0B980b67D528571c95c6DaC1c'
 // const QUOTER_CONTRACT_ADDRESS = '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3'
 // const SWAP_ROUTER_CONTRACT_ADDRESS = '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E'
-// /*******************************************************************sepolia 测试链********************************************************************* */
+
+
+/*******************************************************************sepolia 测试链********************************************************************* */
 
 
 /*******************************************************************mainnet 测试链********************************************************************* */
+
 const chainid = 31337;
  const WETH_TOKEN = new Token(
     chainid,
@@ -90,6 +103,8 @@ const chainid = 31337;
 
 const rpcUrl = 'http://localhost:8545'
 const privateKey = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+// const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+// const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2';
 
 const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2Abi.json").toString();
 
@@ -215,6 +230,7 @@ async function executeSwap(swapRouter:ethers.Contract, params:any, signer:ethers
     const transaction = await swapRouter.exactInputSingle.populateTransaction(params);
     const receipt = await signer.sendTransaction(transaction);
     console.log(`-------------------------------`)
+    console.log("transaction:",transaction);
     console.log(`Receipt: https://sepolia.etherscan.io/tx/${receipt.hash}`);
     console.log(`-------------------------------`)
     return receipt
@@ -226,39 +242,59 @@ async function main(swapAmount:number) {
     const amountIn = ethers.parseUnits(inputAmount.toString(), 18);
 
 
+    const balance = await provider.getBalance(signer.address);
+    console.log("ETH balance:",ethers.formatUnits(balance,18));
 
-
+    //-------------------------------查询WETH 信息-------------------------------------------------
     const tokenContract = new ethers.Contract(WETH.address, TOKEN_IN_ABI, signer);
-    const balance = await tokenContract.balanceOf(signer.address);
+    let wethBalance = await tokenContract.balanceOf(signer.address);
     const symbol = await tokenContract.symbol();
-    const allowance = await tokenContract.allowance(SWAP_ROUTER_CONTRACT_ADDRESS);
+    const allowance = await tokenContract.allowance(signer.address,SWAP_ROUTER_CONTRACT_ADDRESS);
 
     console.log("symbol:",symbol);
-    console.log("WETH balance:",balance);
+    console.log("WETH balance:",ethers.formatUnits(wethBalance,18));
+    console.log(`address ${signer.address} approve spender ${SWAP_ROUTER_CONTRACT_ADDRESS} allowance:${ethers.formatUnits(allowance,18).toString()}`);
+
+    //-----------------------------ETH wrap to WETH------------------------------------------------
+    const transaction = await tokenContract.deposit(
+        {
+            value:ethers.parseEther("1")
+        }
+    )
+    const reciept = await transaction.wait();
+
+    console.log("deposit transaction:",transaction);
+    console.log("deposit reciept:",reciept);
 
 
+    try {
+        await approveToken(WETH.address,ERC20_ABI,SWAP_ROUTER_CONTRACT_ADDRESS, amountIn, signer)
 
-    // try {
-    //     await approveToken(WETH.address,ERC20_ABI,SWAP_ROUTER_CONTRACT_ADDRESS, amountIn, signer)
-    //     const { poolContract, token0, token1, fee } = await getPoolInfo(factoryContract, WETH, USDC);
-    //     console.log(`-------------------------------`)
-    //     console.log(`Fetching Quote for: ${WETH.symbol} to ${USDC.symbol}`);
-    //     console.log(`-------------------------------`)
-    //     console.log(`Swap Amount: ${ethers.formatEther(amountIn)}`);
+        wethBalance = await tokenContract.balanceOf(signer.address);
+        console.log("after approve:")
+        console.log("symbol:",symbol);
+        console.log("WETH balance:",ethers.formatUnits(wethBalance,18).toString());
+        console.log(`address ${signer.address} approve spender ${SWAP_ROUTER_CONTRACT_ADDRESS} allowance:${ethers.formatUnits(allowance,18).toString()}`);
 
-    //     const quotedAmountOut:string = await quoteAndLogSwap(quoterContract, WETH,USDC,fee, signer, inputAmount);
-    //     console.log("quotedAmountOut:",quotedAmountOut);
-    //     console.log("quotedAmountOut to string:",quotedAmountOut.toString());
-    //     console.log("quotedAmountOut to string:",quotedAmountOut[0].toString());
-    //     // const params = await prepareSwapParams(poolContract, signer, amountIn, quotedAmountOut[0].toString());
-    //     const params = await prepareSwapParams(poolContract, signer, amountIn, '69');
+        const { poolContract, token0, token1, fee } = await getPoolInfo(factoryContract, WETH, USDC);
+        console.log(`-------------------------------`)
+        console.log(`Fetching Quote for: ${WETH.symbol} to ${USDC.symbol}`);
+        console.log(`-------------------------------`)
+        console.log(`Swap Amount: ${ethers.formatEther(amountIn)}`);
 
-    //     console.log("prepareSwapParams params:",params);
-    //     await executeSwap(swapRouterContract, params, signer);
+        const quotedAmountOut:string = await quoteAndLogSwap(quoterContract, WETH,USDC,fee, signer, inputAmount);
+        console.log("quotedAmountOut:",quotedAmountOut);
+        console.log("quotedAmountOut to string:",quotedAmountOut.toString());
+        console.log("quotedAmountOut to string:",quotedAmountOut[0].toString());
+        // const params = await prepareSwapParams(poolContract, signer, amountIn, quotedAmountOut[0].toString());
+        const params = await prepareSwapParams(poolContract, signer, amountIn, '69');
 
-    // } catch (error) {
-    //     console.error("An error occurred:", error);
-    // }
+        console.log("prepareSwapParams params:",params);
+        await executeSwap(swapRouterContract, params, signer);
+
+    } catch (error) {
+        console.error("An error occurred:", error);
+    }
 }
 
-main(0.02) // Change amount as needed
+main(0.5) // Change amount as needed

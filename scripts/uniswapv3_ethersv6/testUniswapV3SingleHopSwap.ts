@@ -15,11 +15,11 @@ import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Qu
 import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
 import { assertArgumentCount, ethers } from 'ethers';
 
-import { getAddress } from 'ethers/lib/utils';
 
-import {Web3} from 'web3';
+import {eth, Web3} from 'web3';
 import { sign } from 'web3/lib/commonjs/eth.exports';
 import { Web3Account } from 'web3-eth-accounts';
+import WETH_ABI from './abis/weth.json';
 
 
 const web3 = new Web3(CurrentConfig.rpc.local);
@@ -276,12 +276,19 @@ async function prepareSwapParams(tokenIn:Token,tokenOut:Token,poolFee:number, am
 
 async function testMultiHopSwapV2(){
 
+    const provider = getProvider();
     const tokenIn:Token = WETH_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
     const inputAmount = 0.02;
     const outputAmount:number = 100;
     const poolFee:number = FeeAmount.MEDIUM;
     const sqrtPriceLimitX96 = 0;
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()));
+
+
+    
 
 
 
@@ -297,30 +304,56 @@ async function testMultiHopSwapV2(){
     const state = getPoolState(poolContract);
 
     console.log("immutables:",immutables);
-    console.log("wallet:",wallet);
+    console.log("wallet address:",wallet.address);
 
 
 
-    const router_address = UNISWAPV3_ROUTER_ADDRESS;
+    const router_address = UNISWAPV3_ROUTER2_ADDRESS;
     const router_abi = UNISWAPV3_ROUTER_ABI;
-    const swapRouterContract = new ethers.Contract(router_address,router_abi,wallet);
+    const swapRouterContract = new ethers.Contract(router_address,router_abi,provider);
 
     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
 
     const approvalAmount = amountIn;
 
-    const tokenContract = new ethers.Contract(immutables.token1,ERC20_ABI,wallet);
 
+
+    //----------------------ETH wrap to WETH(deposit)-----------------------------
+    const tokenContract = new ethers.Contract(immutables.token1,WETH_ABI,wallet);
+    let wethBalance = await tokenContract.balanceOf(wallet.address);
+    console.log("before deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+
+    const depositTransaction = await tokenContract.deposit(
+        {
+            value:ethers.parseEther("1")
+        }
+    )
+    const reciept = await depositTransaction.wait();
+    wethBalance = await tokenContract.balanceOf(wallet.address);
+    console.log("after deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+    // console.log("deposit transaction:",depositTransaction);
+    // console.log("deposit reciept:",reciept);
         
-
+    //------------------------quote2ExactInputSingle---------------------------------
     const output = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
     console.log("output:",output);
     console.log("output amountOut:",output.amountOut);
 
-    // const nonce = await wallet.getTransactionCount();
     // console.log("nonce:",nonce);
 
 
+   //-------------------------approve------------------------------------------------
+    const approvalReceipt = await getTokenTransferApproval(tokenContract,router_address,tokenIn,inputAmount);
+    const allowance = await tokenContract.allowance(wallet.address,router_address);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),tokenIn.decimals)}`);
+    console.log("allowance:",allowance);
+    console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,18).toString()}`);
+
+
+
+
+    //-----------------------------execute trade------------------------------------
     const router1Params = {
         tokenIn:tokenIn.address,
         tokenOut:tokenOut.address,
@@ -338,28 +371,28 @@ async function testMultiHopSwapV2(){
         tokenOut:tokenOut.address,
         fee:immutables.fee,
         recipient:wallet.address,
+        deadline:createDeadLine(),
         amountIn:amountIn.toString(),
         amountOutMinimum:0,
         sqrtPriceLimitX96:0,
     }
-    console.log("params:",router2Params);
+    console.log("router2Params:",router2Params);
+    const nonce = await wallet.getNonce();
+    console.log("nonce:",nonce);
 
-   
-    const approvalReceipt = await getTokenTransferApproval(router_address,tokenIn,inputAmount);
-    const approvalFee = calculateFee(approvalReceipt)
-    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),tokenIn.decimals)}`);
+
 
     // swapRouterContract.functions.execute()
     const transaction = await swapRouterContract.exactInputSingle.populateTransaction(
-        router1Params,
+        router2Params,
         {
-            gasLimit:100000n,
-            value:amountIn,
-            // gasPrice: ethers.utils.parseUnits('10', 'gwei'),
-            maxFeePerGas:ethers.parseUnits("20","gwei"),
-            maxPriorityFeePerGas:ethers.parseUnits("2","gwei")
-            // nonce:nonce
-            // type:TradeType.EXACT_INPUT
+        //     gasLimit:100000n,
+        //     value:amountIn,
+        //     // gasPrice: ethers.utils.parseUnits('10', 'gwei'),
+        //     maxFeePerGas:ethers.parseUnits("20","gwei"),
+        //     maxPriorityFeePerGas:ethers.parseUnits("2","gwei")
+            nonce:nonce
+        //     // type:TradeType.EXACT_INPUT
         }
     )
 
@@ -371,6 +404,9 @@ async function testMultiHopSwapV2(){
     console.log("transaction:",transaction);
     console.log("sendTx:",sendTx);
     console.log("receipt:",receipt);
+
+    wethBalance = await tokenContract.balanceOf(wallet.address);
+    console.log("after swap wethBalance:",ethers.formatEther(wethBalance.toString()));
     
 
 }

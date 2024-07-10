@@ -25,6 +25,9 @@ export const ERC20_ABI = [
     // Authenticated Functions
     'function transfer(address to, uint amount) returns (bool)',
     'function approve(address _spender, uint256 _value) returns (bool)',
+    'function deposit() public payable',
+    'function withdraw(uint wad) public',
+    'function allowance(address my,address spender) returns (uint256)',
   
     // Events
     'event Transfer(address indexed from, address indexed to, uint amount)',
