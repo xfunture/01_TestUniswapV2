@@ -2,14 +2,14 @@ import { CurrentConfig } from './config';
 import { quote1ExactInputSingle,getPoolConstants, quote1ExactInput, quote2ExactInputSingle, quote2ExactInput, quote1ExactOutputSingle, quote2ExactOutputSingle, quote1ExactOutput, quote2ExactOutput } from './lib/quote';
 import { toReadableAmount } from './lib/conversion';
 import { getPoolInfo } from './lib/pool';
-import { createTrade, getOutTokenTransferApproval, getTokenTransferApproval } from './lib/trading';
+import { createTrade, getInTokenTransferApproval, getOutTokenTransferApproval, getTokenTransferApproval } from './lib/trading';
 import { getOutputQuote,TokenTrade} from './lib/trading';
 import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
 import { createDeadLine, fromReadableAmount } from './lib/utils';
-import { getProvider, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
+import { getNonceFromBlock, getNonceLocal, getProvider, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
 import * as fs from 'fs';
-import { ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
+import { DAI_TOKEN, ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
 import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
@@ -40,6 +40,10 @@ const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2
 const UNISWAPV3_ROUTER_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER_ADDRESS,UNISWAPV3_ROUTER_ABI,wallet);
 const UNISWAPV3_ROUTER2_CONTRACT = new ethers.Contract(UNISWAPV3_ROUTER2_ADDRESS,UNISWAPV3_ROUTER2_ABI,wallet);
 
+const provider = getProvider();
+const router_address = UNISWAPV3_ROUTER2_ADDRESS;
+const router_abi = UNISWAPV3_ROUTER_ABI;
+const swapRouterContract = new ethers.Contract(router_address,router_abi,provider);
 
 
 async function getERC20Balance(myAddress:string,CONTRACT_ADDRESS:string):Promise<number>{
@@ -63,6 +67,28 @@ function calculateFee(receipt:ethers.TransactionReceipt):BigInt{
     return gasUsed * gasPrice;
 }
 
+/**
+ * 将ETH 兑换为WETH
+ */
+async function ethToWETH(){
+    //----------------------ETH wrap to WETH(deposit)-----------------------------
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let wethBalance = await tokenContract.balanceOf(wallet.address);
+    console.log("before deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+
+    const depositTransaction = await tokenContract.deposit(
+        {
+            value:ethers.parseEther("1")
+        }
+    )
+    const reciept = await depositTransaction.wait();
+    wethBalance = await tokenContract.balanceOf(wallet.address);
+    console.log("after deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+    // console.log("deposit transaction:",depositTransaction);
+    // console.log("deposit reciept:",reciept);
+        
+}
 
 
 
@@ -75,7 +101,7 @@ function calculateFee(receipt:ethers.TransactionReceipt):BigInt{
  * @param encodeData 
  * @returns 
  */
-async function sendTransaction(wallet_address:string,from:string,to:string,encodeData:string){
+async function sendTransactionWeb3(wallet_address:string,from:string,to:string,encodeData:string){
 
     let nonce = await web3.eth.getTransactionCount(CurrentConfig.wallet.address);
     let gasPrice = await web3.eth.getGasPrice();
@@ -145,7 +171,7 @@ async function testWeb3(){
     const approveEncodeData = erc20Contract.methods.approve(wallet.address,amountIn).encodeABI();
     console.log("approveEncodeData:",approveEncodeData);
 
-    sendTransaction(wallet.address,wallet.address,tokenIn.address,approveEncodeData);
+    sendTransactionWeb3(wallet.address,wallet.address,tokenIn.address,approveEncodeData);
 
 
 
@@ -238,7 +264,7 @@ async function getPoolImmutables(poolContract:ethers.Contract){
     const [token0,token1,fee ] = await Promise.all([
         poolContract.token0(),
         poolContract.token1(),
-        poolContract.fee()
+        poolContract.fee(),
     ])
     return {token0:token0,token1:token1,fee:fee}
 }
@@ -252,18 +278,286 @@ async function getPoolState(poolContract:ethers.Contract){
 }
 
 
+/**
+ * 输入指定数量的输入代币进行交换输出代币
+ * @param tokenIn        :输入代币
+ * @param tokenOut       :输出代币
+ * @param inputAmount    :输入代币数量
+ * @param router_address :Router 的地址
+ * @param poolFee        手续费
+ */
+async function exactInputSingle(tokenIn:Token,tokenOut:Token,inputAmount:number,router_address:string,poolFee:number){
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let tokenInBalance = await tokenContract.balanceOf(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
+    const amountIn:BigInt = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+    console.log(`tokenIn:${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInBalance.toString(),tokenIn.decimals)} amountIn:${inputAmount}`);
+    if(tokenInBalance < amountIn){
+        throw("balance not enough to trade")
+    }
 
-async function prepareSwapParams(tokenIn:Token,tokenOut:Token,poolFee:number, amountIn:BigInt, amountOut:BigInt) {
-    return {
-        tokenIn: tokenIn.address,
-        tokenOut: tokenOut.address,
-        fee: poolFee,
-        recipient: wallet.address,
-        amountIn: amountIn,
-        amountOutMinimum: amountOut,
-        sqrtPriceLimitX96: 0,
-    };
+    //-------------------------approve------------------------------------------------
+    const approvalReceipt = await getTokenTransferApproval(tokenContract,router_address,tokenIn,inputAmount);
+    const allowance = await tokenContract.allowance(wallet.address,router_address);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),18)}`);
+    console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,tokenIn.decimals).toString()}`);
+
+     //------------------------quote2ExactInputSingle---------------------------------
+    const quoteOutput = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
+
+    
+
+    //-----------------------------build transaction------------------------------------
+    const router2Params = {
+        tokenIn:tokenIn.address,
+        tokenOut:tokenOut.address,
+        fee:poolFee,
+        recipient:wallet.address,
+        amountIn:amountIn,
+        amountOutMinimum:quoteOutput.amountOut,
+        sqrtPriceLimitX96:0,
+    }
+    console.log("router2Params:",router2Params);
+    const transaction:ethers.ContractTransaction = await swapRouterContract.exactInputSingle.populateTransaction(
+        router2Params
+    )
+
+    //-----------------------------send transaction--------------------------------------
+    const receipt = await sendTransaction(transaction)
+
+    console.log("receipt:",receipt);
+    if(receipt != null){
+        let sendFee = calculateFee(receipt);
+        console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} transaction fee:${ethers.formatUnits(sendFee.toString(),18)}`);
+
+    }
+
+    const tokenOutBalance2 = await getERC20Balance(wallet.address,tokenOut.address);
+    const tokenOutAdd = tokenOutBalance2 - tokenOutBalance1;
+    console.log("quote2 amountOut:",ethers.formatUnits(quoteOutput.amountOut,tokenOut.decimals));
+    console.log("tokenOut add balance:",ethers.formatUnits(tokenOutAdd,tokenOut.decimals));
+    console.log("tokenOut balance:",ethers.formatUnits(tokenOutBalance2,tokenOut.decimals));
+
 }
+
+
+
+/**
+ * 输入指定数量的输入代币进行交换输出代币
+ * @param tokenIn        :输入代币
+ * @param tokenOut       :输出代币
+ * @param inputAmount    :输入代币数量
+ * @param router_address :Router 的地址
+ * @param poolFee        手续费
+ */
+async function exactOutputSingle(tokenIn:Token,tokenOut:Token,outputAmount:number,router_address:string,poolFee:number){
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let tokenInBalance = await tokenContract.balanceOf(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
+    const amountOut:BigInt = ethers.parseUnits(outputAmount.toString(),tokenIn.decimals);
+    console.log(`tokenIn:${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInBalance.toString(),tokenIn.decimals)} amountOut:${outputAmount}`);
+
+
+    
+     //------------------------quote2ExactOutputSingle---------------------------------
+    const quoteInput = await quote2ExactOutputSingle(tokenIn,tokenOut,outputAmount,poolFee);
+
+    if(tokenInBalance < quoteInput.amountIn){
+        throw("balance not enough to trade")
+    }
+
+    //-------------------------approve------------------------------------------------
+    const approvalReceipt = await getInTokenTransferApproval(tokenContract,router_address,tokenIn,quoteInput.amountIn);
+    const allowance = await tokenContract.allowance(wallet.address,router_address);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),18)}`);
+    console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,tokenIn.decimals).toString()}`);
+
+
+    //-----------------------------build transaction------------------------------------
+    const router2Params = {
+        tokenIn:tokenIn.address,
+        tokenOut:tokenOut.address,
+        fee:poolFee,
+        recipient:wallet.address,
+        amountOut:amountOut,
+        amountInMaximum:quoteInput.amountIn,
+        sqrtPriceLimitX96:0,
+    }
+    console.log("router2Params:",router2Params);
+    const transaction:ethers.ContractTransaction = await swapRouterContract.exactOutputSingle.populateTransaction(
+        router2Params
+    )
+
+    //-----------------------------send transaction--------------------------------------
+    const receipt = await sendTransaction(transaction)
+
+    console.log("receipt:",receipt);
+    if(receipt != null){
+        let sendFee = calculateFee(receipt);
+        console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} transaction fee:${ethers.formatUnits(sendFee.toString(),18)}`);
+
+    }
+
+    const tokenOutBalance2 = await getERC20Balance(wallet.address,tokenOut.address);
+    const tokenOutAdd = tokenOutBalance2 - tokenOutBalance1;
+    console.log("quote2 amountIn:",ethers.formatUnits(quoteInput.amountIn,tokenIn.decimals));
+    console.log("tokenOut add balance:",ethers.formatUnits(tokenOutAdd,tokenOut.decimals));
+    console.log("tokenOut balance:",ethers.formatUnits(tokenOutBalance2,tokenOut.decimals));
+
+}
+
+/**
+ * 输入指定数量的输入代币进行交换输出代币
+ * @param tokenIn        :输入代币
+ * @param tokenOut       :输出代币
+ * @param inputAmount    :输入代币数量
+ * @param router_address :Router 的地址
+ * @param poolFee        手续费
+ */
+async function exactInput(tokenIn:Token,tokenOut:Token,inputAmount:number,router_address:string,poolFee:number){
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let tokenInBalance = await tokenContract.balanceOf(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
+    const amountIn:BigInt = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+    console.log(`tokenIn:${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInBalance.toString(),tokenIn.decimals)} amountIn:${inputAmount}`);
+    if(tokenInBalance < amountIn){
+        throw("balance not enough to trade")
+    }
+
+    //-------------------------approve------------------------------------------------
+    const approvalReceipt = await getTokenTransferApproval(tokenContract,router_address,tokenIn,inputAmount);
+    const allowance = await tokenContract.allowance(wallet.address,router_address);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),18)}`);
+    console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,tokenIn.decimals).toString()}`);
+
+     //------------------------quote2ExactInputSingle---------------------------------
+    const quoteOutput = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
+
+    
+
+    //-----------------------------build transaction------------------------------------
+    // struct ExactInputParams {
+    //     bytes path;
+    //     address recipient;
+    //     uint256 amountIn;
+    //     uint256 amountOutMinimum;
+    // }
+    const path = ethers.solidityPacked(
+                ['address','uint24','address'],
+                [tokenIn.address,poolFee,tokenOut.address]
+            )
+
+    const exactInputParams = {
+        path:path,
+        recipient:wallet.address,
+        amountIn:amountIn,
+        amountOutMinimum:quoteOutput.amountOut,
+    }
+    console.log("router2Params:",exactInputParams);
+    const transaction:ethers.ContractTransaction = await swapRouterContract.exactInput.populateTransaction(
+        exactInputParams
+    )
+
+    //-----------------------------send transaction--------------------------------------
+    const receipt = await sendTransaction(transaction)
+
+    console.log("receipt:",receipt);
+    if(receipt != null){
+        let sendFee = calculateFee(receipt);
+        console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} transaction fee:${ethers.formatUnits(sendFee.toString(),18)}`);
+
+    }
+
+    const tokenOutBalance2 = await getERC20Balance(wallet.address,tokenOut.address);
+    const tokenOutAdd = tokenOutBalance2 - tokenOutBalance1;
+    console.log("quote2 amountOut:",ethers.formatUnits(quoteOutput.amountOut,tokenOut.decimals));
+    console.log("tokenOut add balance:",ethers.formatUnits(tokenOutAdd,tokenOut.decimals));
+    console.log("tokenOut balance:",ethers.formatUnits(tokenOutBalance2,tokenOut.decimals));
+
+
+}
+
+
+/**
+ * 指定数量的输入代币交换输出代币，使用多跳交换
+ * @param tokenIn        :输入代币
+ * @param tokenOut       :输出代币
+ * @param tokenMiddle    :中间代币
+ * @param inputAmount    :输入代币数量
+ * @param router_address :Router 的地址
+ * @param poolFee        手续费
+ */
+async function exactInputMultihop(tokenIn:Token,tokenMiddle:Token,tokenOut:Token,inputAmount:number,router_address:string,poolFee:number){
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let tokenInBalance = await tokenContract.balanceOf(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
+    const amountIn:BigInt = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+    console.log(`tokenIn:${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInBalance.toString(),tokenIn.decimals)} amountIn:${inputAmount}`);
+    if(tokenInBalance < amountIn){
+        throw("balance not enough to trade")
+    }
+
+    //-------------------------approve------------------------------------------------
+    const approvalReceipt = await getTokenTransferApproval(tokenContract,router_address,tokenIn,inputAmount);
+    const allowance = await tokenContract.allowance(wallet.address,router_address);
+    const approvalFee = calculateFee(approvalReceipt)
+    console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} approve fee:${ethers.formatUnits(approvalFee.toString(),18)}`);
+    console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,tokenIn.decimals).toString()}`);
+
+     //------------------------quote2ExactInputSingle---------------------------------
+    const quoteOutput = await quote2ExactInput(tokenIn,tokenMiddle,tokenOut,inputAmount,poolFee);
+
+    
+
+    //-----------------------------build transaction------------------------------------
+    // struct ExactInputParams {
+    //     bytes path;
+    //     address recipient;
+    //     uint256 amountIn;
+    //     uint256 amountOutMinimum;
+    // }
+    const path = ethers.solidityPacked(
+                ['address','uint24','address','uint24','address'],
+                [tokenIn.address,poolFee,tokenMiddle.address,poolFee,tokenOut.address]
+            )
+
+    const exactInputParams = {
+        path:path,
+        recipient:wallet.address,
+        amountIn:amountIn,
+        amountOutMinimum:quoteOutput.amountOut,
+    }
+    console.log("router2Params:",exactInputParams);
+    const transaction:ethers.ContractTransaction = await swapRouterContract.exactInput.populateTransaction(
+        exactInputParams
+    )
+
+    //-----------------------------send transaction--------------------------------------
+    const receipt = await sendTransaction(transaction)
+
+    console.log("receipt:",receipt);
+    if(receipt != null){
+        let sendFee = calculateFee(receipt);
+        console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} transaction fee:${ethers.formatUnits(sendFee.toString(),18)}`);
+
+    }
+
+    const tokenOutBalance2 = await getERC20Balance(wallet.address,tokenOut.address);
+    const tokenOutAdd = tokenOutBalance2 - tokenOutBalance1;
+    console.log("quote2 amountOut:",ethers.formatUnits(quoteOutput.amountOut,tokenOut.decimals));
+    console.log("tokenOut add balance:",ethers.formatUnits(tokenOutAdd,tokenOut.decimals));
+    console.log("tokenOut balance:",ethers.formatUnits(tokenOutBalance2,tokenOut.decimals));
+
+
+}
+
+
+
+
+
 
 /**
  * 测试UniswapV3 中的exactInputSingle 进行代币交换，但是一直报错
@@ -274,26 +568,26 @@ async function prepareSwapParams(tokenIn:Token,tokenOut:Token,poolFee:number, am
  * reverted with reason string "STF"
  */
 
-async function testMultiHopSwapV2(){
+async function testExactInputSingle(){
 
-    const provider = getProvider();
     const tokenIn:Token = WETH_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
     const inputAmount = 0.02;
     const outputAmount:number = 100;
     const poolFee:number = FeeAmount.MEDIUM;
     const sqrtPriceLimitX96 = 0;
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
 
     const ethBalance = await provider.getBalance(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
     console.log("ethBalance:",ethers.formatEther(ethBalance.toString()));
 
 
     
 
 
-
+    //-----------------------------获取流动性池--------------------------------------
     const poolConstants = await getPoolConstants(tokenIn,tokenOut,3000);
-
     const poolContract = new ethers.Contract(
         poolConstants.poolAddress,
         IUniswapV3PoolABI.abi,
@@ -308,38 +602,12 @@ async function testMultiHopSwapV2(){
 
 
 
-    const router_address = UNISWAPV3_ROUTER2_ADDRESS;
-    const router_abi = UNISWAPV3_ROUTER_ABI;
-    const swapRouterContract = new ethers.Contract(router_address,router_abi,provider);
+
 
     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-
     const approvalAmount = amountIn;
 
 
-
-    //----------------------ETH wrap to WETH(deposit)-----------------------------
-    const tokenContract = new ethers.Contract(immutables.token1,WETH_ABI,wallet);
-    let wethBalance = await tokenContract.balanceOf(wallet.address);
-    console.log("before deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
-
-    const depositTransaction = await tokenContract.deposit(
-        {
-            value:ethers.parseEther("1")
-        }
-    )
-    const reciept = await depositTransaction.wait();
-    wethBalance = await tokenContract.balanceOf(wallet.address);
-    console.log("after deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
-    // console.log("deposit transaction:",depositTransaction);
-    // console.log("deposit reciept:",reciept);
-        
-    //------------------------quote2ExactInputSingle---------------------------------
-    const output = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
-    console.log("output:",output);
-    console.log("output amountOut:",output.amountOut);
-
-    // console.log("nonce:",nonce);
 
 
    //-------------------------approve------------------------------------------------
@@ -351,16 +619,21 @@ async function testMultiHopSwapV2(){
     console.log(`address ${wallet.address} approve spender ${UNISWAPV3_ROUTER2_ADDRESS} allowance:${ethers.formatUnits(allowance,18).toString()}`);
 
 
+    //------------------------quote2ExactInputSingle---------------------------------
+    const quoteOutput = await quote2ExactInputSingle(tokenIn,tokenOut,inputAmount,poolFee);
+    // console.log("output:",output);
+    // console.log("output amountOut:",output.amountOut);
+    
 
 
-    //-----------------------------execute trade------------------------------------
+    //-----------------------------generate params------------------------------------
     const router1Params = {
         tokenIn:tokenIn.address,
         tokenOut:tokenOut.address,
         fee:immutables.fee,
         recipient:wallet.address,
         deadline:createDeadLine(),
-        amountIn:amountIn.toString(),
+        amountIn:amountIn,
         amountOutMinimum:0,
         sqrtPriceLimitX96:0
     }
@@ -371,43 +644,120 @@ async function testMultiHopSwapV2(){
         tokenOut:tokenOut.address,
         fee:immutables.fee,
         recipient:wallet.address,
-        deadline:createDeadLine(),
-        amountIn:amountIn.toString(),
-        amountOutMinimum:0,
+        amountIn:amountIn,
+        amountOutMinimum:quoteOutput.amountOut,
         sqrtPriceLimitX96:0,
     }
     console.log("router2Params:",router2Params);
-    const nonce = await wallet.getNonce();
-    console.log("nonce:",nonce);
 
 
-
-    // swapRouterContract.functions.execute()
-    const transaction = await swapRouterContract.exactInputSingle.populateTransaction(
-        router2Params,
-        {
-        //     gasLimit:100000n,
-        //     value:amountIn,
-        //     // gasPrice: ethers.utils.parseUnits('10', 'gwei'),
-        //     maxFeePerGas:ethers.parseUnits("20","gwei"),
-        //     maxPriorityFeePerGas:ethers.parseUnits("2","gwei")
-            nonce:nonce
-        //     // type:TradeType.EXACT_INPUT
-        }
+    //-----------------------------build transaction------------------------------------
+    const transaction:ethers.ContractTransaction = await swapRouterContract.exactInputSingle.populateTransaction(
+        router2Params
     )
 
-    const sendTx = await wallet.sendTransaction(transaction);
 
-    const receipt = await sendTx.wait();
+    const receipt = await sendTransaction(transaction)
 
-
-    console.log("transaction:",transaction);
-    console.log("sendTx:",sendTx);
     console.log("receipt:",receipt);
+    if(receipt != null){
+        let sendFee = calculateFee(receipt);
+        console.log(`tokenIn:${tokenIn.symbol} tokenOut:${tokenOut.symbol} transaction fee:${ethers.formatUnits(sendFee.toString(),tokenIn.decimals)}`);
 
-    wethBalance = await tokenContract.balanceOf(wallet.address);
-    console.log("after swap wethBalance:",ethers.formatEther(wethBalance.toString()));
-    
+    }
+
+    // wethBalance = await tokenContract.balanceOf(wallet.address);
+    // console.log("after swap wethBalance:",ethers.formatEther(wethBalance.toString()));
+
+    const tokenOutBalance2 = await getERC20Balance(wallet.address,tokenOut.address);
+    const tokenOutAdd = tokenOutBalance2 - tokenOutBalance1;
+    console.log("quote2 amountOut:",ethers.formatUnits(quoteOutput.amountOut,tokenOut.decimals));
+    console.log("tokenOut add balance:",ethers.formatUnits(tokenOutAdd,tokenOut.decimals));
+    console.log("tokenOut balance:",ethers.formatUnits(tokenOutBalance2,tokenOut.decimals));
+
+}
+
+
+
+async function testExactInputSingleV2(){
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()))
+
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+    await exactInputSingle(tokenIn,tokenOut,inputAmount,router_address,poolFee);
+
+
+}
+
+
+async function testExactInput(){
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()))
+
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+    await exactInput(tokenIn,tokenOut,inputAmount,router_address,poolFee);
+
+
+}
+
+
+
+async function testExactInputMultihop(){
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()))
+
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenMiddle:Token = DAI_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+    await exactInputMultihop(tokenIn,tokenMiddle,tokenOut,inputAmount,router_address,poolFee);
+
+
+}
+
+
+
+
+async function testExactOutputSingle(){
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()))
+
+
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+
+
+    await exactOutputSingle(tokenIn,tokenOut,outputAmount,router_address,poolFee);
+
 
 }
 
@@ -415,11 +765,23 @@ async function testMultiHopSwapV2(){
 
 async function main(){
 
+
+    // await ethToWETH();
     // await testWeb3();
 
     // testQuote();
 
-    testMultiHopSwapV2();
+    // await testExactInputSingle();
+
+
+    // await testExactInputSingleV2();
+// 
+    // await testExactInput();
+
+    // await testExactInputMultihop();
+
+    await testExactOutputSingle();
+
 
 
 }
