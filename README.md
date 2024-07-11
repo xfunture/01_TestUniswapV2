@@ -73,3 +73,8 @@ HOLESKY_PRIVATE_KEY=
 ```
 
 # UniswapV3
+目前ethers.js 版本已经更新到6.13.1
+在该版本的基础上实现了单个代币的交换和多跳代币的交换
+```
+npx hardhat run ./scripts/uniswapv3_ethersv6/testUniswapV3SingleHopSwap.ts
+```

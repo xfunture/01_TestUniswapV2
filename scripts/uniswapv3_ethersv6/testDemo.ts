@@ -59,14 +59,12 @@ import { sign } from 'web3/lib/commonjs/eth.exports';
 
 // /*****sepolia 线上环境******** */
 // // const rpcUrl = 'https://eth-sepolia.g.alchemy.com/v2/f9yqqeMqy1RDCFh-H_WQKAatBjhq1Oa_'
-// // const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2'
 // /*****sepolia 线上环境******** */
 
 // /*****sepolia 本地环境******** */
 // const rpcUrl = "http://localhost:8545";
 // const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 // // const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
-// // const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2';
 // /*****sepolia 本地环境******** */
 
 
@@ -104,7 +102,6 @@ const chainid = 31337;
 const rpcUrl = 'http://localhost:8545'
 const privateKey = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 // const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
-// const privateKey = 'a381ac0a09a06eb5a308c3e9f352cebe98e2612af284b45b29e1623b329930c2';
 
 const UNISWAPV3_ROUTER2_ABI = fs.readFileSync("./contracts/abis/UniswapV3Router2Abi.json").toString();
 

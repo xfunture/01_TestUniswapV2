@@ -766,12 +766,12 @@ async function testExactOutputSingle(){
 async function main(){
 
 
-    // await ethToWETH();
+    await ethToWETH();
     // await testWeb3();
 
     // testQuote();
 
-    // await testExactInputSingle();
+    await testExactInputSingle();
 
 
     // await testExactInputSingleV2();
@@ -780,7 +780,7 @@ async function main(){
 
     // await testExactInputMultihop();
 
-    await testExactOutputSingle();
+    // await testExactOutputSingle();
 
 
 
