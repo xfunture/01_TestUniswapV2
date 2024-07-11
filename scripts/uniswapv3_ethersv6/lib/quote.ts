@@ -7,7 +7,7 @@ import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/I
 
 import { POOL_FACTORY_CONTRACT_ADDRESS,QUOTER2_CONTRACT_ADDRESS,QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, USDC_TOKEN, WETH_TOKEN } from '../lib/constant';
 
-import { getProvider } from '../lib/providers';
+import { getNonceFromBlock, getProvider } from '../lib/providers';
 import { toReadableAmount,fromReadableAmount } from '../lib/conversion';
 import { createDeadLine } from './utils';
 import { Token } from '@uniswap/sdk-core';
@@ -97,6 +97,7 @@ export async function quote2ExactInputSingle(tokenIn:Token,tokenOut:Token,amount
         ).toString(),
         sqrtPriceLimitX96:sqrtPriceLimitX96       
     }
+    let nonce = await getNonceFromBlock();
     const output = await quoterContract.quoteExactInputSingle.staticCall(
         params                                                            // sqrtPriceLimit
     )

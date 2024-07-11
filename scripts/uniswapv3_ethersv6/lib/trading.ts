@@ -155,6 +155,29 @@ export async function getTokenTransferApproval(
 }
 
 
+export async function getInTokenTransferApproval(
+    tokenContract:ethers.Contract,
+    routerAddress:string,
+    token:Token,
+    amountIn:number
+):Promise<ethers.TransactionReceipt>{
+    const provider = getProvider();
+    const address = getWalletAddress()
+    if(!provider || !address){
+        throw new Error("no provider");
+    }
+
+
+    const transaction = await tokenContract.approve.populateTransaction(
+        routerAddress,
+        amountIn
+    )
+
+    return sendTransaction(transaction)
+
+}
+
+
 export async function getOutTokenTransferApproval(
     token:Token,
     amountOut:BigInt

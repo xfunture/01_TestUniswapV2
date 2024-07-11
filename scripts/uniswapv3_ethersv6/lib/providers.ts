@@ -9,7 +9,28 @@ const mainnetProvider = new ethers.JsonRpcProvider(
 
 export const wallet = createWallet();
 
+export async function getNonceFromBlock():Promise<number>{
+    return wallet.getNonce();
+}
 
+// NONCE 全局变量，该变量在区块链中用于防止重用攻击
+// 该变量在项目启动时完成初始化，从链上获取nonce 值
+// 每次使用调用getNonceLocal ,每次使用nonce 都会加1
+export let NONCE:number;
+
+getNonceFromBlock().then(
+    result => {
+        NONCE = result
+        console.log("first get Nonce:",NONCE);
+    }
+)
+
+
+export function getNonceLocal(){
+    NONCE = NONCE + 1
+    console.log("getNonceLocal NONCE:",NONCE);
+    return NONCE;
+}
 
 export enum TransactionState{
     Failed = 'Failed',
@@ -62,7 +83,15 @@ async function sendTransactionViaWallet(
     if(transaction.value){
         transaction.value = BigInt(transaction.value)
     }
-    const txRes = await wallet.sendTransaction(transaction);
+
+
+    let nonce = await getNonceFromBlock();
+    // console.log("sendTransactoin nonce:",nonce);
+    // let nonce = getNonceLocal();
+    transaction.nonce = nonce;
+    transaction.maxPriorityFeePerGas = ethers.parseUnits('1','gwei');
+    const txRes = await wallet.sendTransaction(transaction
+    );
 
     let receipt = null;
     const provider = getProvider();
