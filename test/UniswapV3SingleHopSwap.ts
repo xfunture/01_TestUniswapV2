@@ -17,7 +17,8 @@ describe("UniswapV3 swap",function(){
         const uniswapv3Swap = await ethers.deployContract("UniswapV3SingleHopSwap",[routerAddress]);
 
         await uniswapv3Swap.waitForDeployment();
-
+        console.log("\towner address:",owner.address,"addr1:",addr1.address,"addr2:",addr2.address);
+        console.log("\tuniswapv3Swap contract address:",await uniswapv3Swap.getAddress());
         return {uniswapv3Swap,owner,addr1,addr2};
     }
 
@@ -32,26 +33,28 @@ describe("UniswapV3 swap",function(){
 
         it("UniswapV3 single hop swap",async function(){
             const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
-            console.log("\tUniswapV3SingleHopSwap contract address:",await uniswapv3Swap.getAddress());
             const inputAmount = 0.02;
+            const inputAmountOut = 0.02;
             const tokenIn:Token = WETH_TOKEN;
             const tokenOut:Token = DAI_TOKEN;
-            const poolFee = 500;
+            const poolFee = 3000;
             const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            const amountOut = 0;
+            const amountOut = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
 
-            console.log("\towner:",owner.address);
-            console.log("\tuniswapV3Swap msg.sender:",await uniswapv3Swap.owner());
-            const exactInputSingleAmountOut = await uniswapv3Swap.swapExactInputSingleHop(tokenIn.address,tokenOut.address,amountIn,poolFee);
-            console.log("\texactInputSingleAmountOut:",exactInputSingleAmountOut);
+
+            //---------------------------deposit-------------------------------------
+            uniswapv3Swap.wrapEther({value:amountIn});
+            // uniswapv3Swap.unwrapEther({value:amountOut});
+
+
+    //         console.log("\tuniswapV3Swap msg.sender:",await uniswapv3Swap.owner());
+            // const exactInputSingleAmountOut = await uniswapv3Swap.swapExactInputSingle(tokenIn.address,tokenOut.address,amountIn,poolFee);
+            // console.log("\texactInputSingleAmountOut:",exactInputSingleAmountOut);
+
 
             expect(await uniswapv3Swap.owner()).to.equal(owner.address);
         })
-
-
-
-       
-
-        
     })
+
+
 })
