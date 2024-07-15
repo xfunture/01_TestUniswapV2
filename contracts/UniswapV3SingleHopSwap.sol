@@ -75,17 +75,18 @@ contract UniswapV3SingleHopSwap{
     }
 
     /**
+     * 该函数将ETH转换为WETH，并且发送给owner
      * 调用着通过智能合约将msg.value(0.02) ETH转换为weth
      * 1. 将收到的ETH 兑换为WETH，weth.deposit 这一步完成之后本合约就拥有了0.02个weth，
      * 2. 合约将0.02 weth 转给合约的的调用者（owner）
      * 
      */
-    function wrapEther() external payable{
+    function wrapEtherToOwner() external payable{
         uint256 balanceBefore = weth.balanceOf(msg.sender);
         uint256 balanceContract = weth.balanceOf(address(this));
         uint256 ethAmount = msg.value;
 
-        console.log("wrapEther:");
+        console.log("wrapEtherToOwner:");
         console.log("ethAmount:",ethAmount);
         console.log("msg.sender:%s before deposit weth balance:%s",msg.sender,balanceBefore);
         console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
@@ -100,16 +101,41 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    function unwrapEther(uint256 amount) external payable{
-        console.log("unwrapEther:");
-        uint256 amount = msg.value;
+    /**
+     * 该函数将ETH转换为WETH，weth归合约本身所有
+     * 直接调用WETH 合约的存款函数deposit
+     * 
+     */
+    function wrapEtherToContract() external payable{
+        uint256 ethAmount = msg.value;
+        uint256 balanceContract = weth.balanceOf(address(this));
+
+        console.log("wrapEtherToContract:");
+        console.log("ethAmount:",ethAmount);
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        weth.deposit{value:ethAmount}();          
+        balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+
+        
+
+    }
+
+    /*
+     * 将weth 转为eth ，并且存储在合约当中
+     *
+     */
+    function unwrapEtherToContract(uint256 amount) external payable{
+        console.log("unwrapEtherToContract:");
         uint256 balanceBefore = weth.balanceOf(msg.sender);
         uint256 balanceContract = weth.balanceOf(address(this));
+        console.log("unwrapEther amount:%s",amount);
         console.log("msg.sender:%s before transferFrom weth balance:%s",msg.sender,balanceBefore);
         console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
 
-        weth.transferFrom(owner, address(this), amount);
-        // weth.withdraw(amount);
+
+        weth.approve(address(this),amount);
+        weth.withdraw(amount);
         
         uint256 balanceAfter = weth.balanceOf(msg.sender);
         balanceContract = weth.balanceOf(address(this));
@@ -120,9 +146,39 @@ contract UniswapV3SingleHopSwap{
 
 
     }
+    /*
+     * 将weth转为eth，并且发送到个人账户owner
+     * 
+     */
+    function unwrapEtherToOwner(uint256 amount) external payable{
+        console.log("unwrapEtherToOwner:");
+        uint256 balanceBefore = weth.balanceOf(msg.sender);
+        uint256 balanceContract = weth.balanceOf(address(this));
+        console.log("unwrapEther amount:%s",amount);
+        console.log("msg.sender:%s before transferFrom weth balance:%s",msg.sender,balanceBefore);
+        console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
+
+
+        weth.approve(address(this),amount);
+        weth.withdraw(amount);
+        owner.transfer(amount);
+        
+        uint256 balanceAfter = weth.balanceOf(msg.sender);
+        balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s after transferFrom weth balance:%s",address(this),balanceAfter);
+        console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
+        getERC20Balance()
+
+
+
+
+    }
 
    
-
+    /*
+     * 通过UniswapV3 实现指定输入数量的单跳交换
+     * 该函数调用的前提是本智能合约已经拥有了weth
+     */
     function swapExactInputSingle(
         address token0,
         address token1,
@@ -131,25 +187,25 @@ contract UniswapV3SingleHopSwap{
         )
         external returns (uint256 amountOut)
     {
-        uint256 wethBalance = weth.balanceOf(owner);
+        uint256 wethBalance = weth.balanceOf(address(this));
         console.log("wethBalance:",wethBalance);
-        // weth.transferFrom(msg.sender,address(this),amountIn);
-        // weth.approve(address(router),amountIn);
+        weth.approve(address(this),amountIn);
+        weth.approve(address(router),amountIn);
 
-        // IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
-        //     .ExactInputSingleParams(
-        //         {
-        //             tokenIn:token0,
-        //             tokenOut:token1,
-        //             fee:uint24(fee),
-        //             recipient:msg.sender,
-        //             amountIn:amountIn,
-        //             amountOutMinimum:0,
-        //             sqrtPriceLimitX96:0
-        //         }
-        //     );
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+            .ExactInputSingleParams(
+                {
+                    tokenIn:token0,
+                    tokenOut:token1,
+                    fee:uint24(fee),
+                    recipient:msg.sender,
+                    amountIn:amountIn,
+                    amountOutMinimum:0,
+                    sqrtPriceLimitX96:0
+                }
+            );
 
-        // uniswapRouter.exactInputSingle(params);
+        amountOut = uniswapRouter.exactInputSingle(params);
         // (bool success, bytes memory amountBytes) = address(uniswapRouter).call(
         //     abi.encodeWithSelector(
         //         IV3SwapRouter.exactInputSingle.selector,
