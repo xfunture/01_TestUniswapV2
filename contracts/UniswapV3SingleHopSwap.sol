@@ -65,36 +65,58 @@ contract UniswapV3SingleHopSwap{
 
     }
 
+    //
+    receive() external payable{
+        console.log("receive");
+    }
+
+    fallback() external payable{
+        console.log("fallback");
+    }
+
+    /**
+     * 调用着通过智能合约将msg.value(0.02) ETH转换为weth
+     * 1. 将收到的ETH 兑换为WETH，weth.deposit 这一步完成之后本合约就拥有了0.02个weth，
+     * 2. 合约将0.02 weth 转给合约的的调用者（owner）
+     * 
+     */
     function wrapEther() external payable{
         uint256 balanceBefore = weth.balanceOf(msg.sender);
         uint256 balanceContract = weth.balanceOf(address(this));
         uint256 ethAmount = msg.value;
 
         console.log("wrapEther:");
+        console.log("ethAmount:",ethAmount);
         console.log("msg.sender:%s before deposit weth balance:%s",msg.sender,balanceBefore);
         console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
-        weth.deposit{value:ethAmount}();            
-        weth.transfer(msg.sender,ethAmount);
+        weth.deposit{value:ethAmount}();          
+        weth.transfer(owner,ethAmount);
         uint256 balanceAfter = weth.balanceOf(msg.sender);
+        balanceContract = weth.balanceOf(address(this));
         console.log("msg.sender:%s after deposit weth balance:%s",msg.sender,balanceAfter);
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+
         
 
     }
 
-    function unwrapEther() external payable{
+    function unwrapEther(uint256 amount) external payable{
         console.log("unwrapEther:");
-        address payable sender = payable(msg.sender);
         uint256 amount = msg.value;
         uint256 balanceBefore = weth.balanceOf(msg.sender);
         uint256 balanceContract = weth.balanceOf(address(this));
-        console.log("msg.sender:%s before deposit weth balance:%s",msg.sender,balanceBefore);
-        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        console.log("msg.sender:%s before transferFrom weth balance:%s",msg.sender,balanceBefore);
+        console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
 
-        // weth.transferFrom(msg.sender,address(this),amount);
+        weth.transferFrom(owner, address(this), amount);
         // weth.withdraw(amount);
         
         uint256 balanceAfter = weth.balanceOf(msg.sender);
-        console.log("msg.sender:%s after deposit weth balance:%s",msg.sender,balanceAfter);
+        balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s after transferFrom weth balance:%s",address(this),balanceAfter);
+        console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
+
+
 
 
     }

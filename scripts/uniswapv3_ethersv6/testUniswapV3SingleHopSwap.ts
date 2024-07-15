@@ -73,21 +73,22 @@ function calculateFee(receipt:ethers.TransactionReceipt):BigInt{
 async function ethToWETH(){
     //----------------------ETH wrap to WETH(deposit)-----------------------------
     const ethBalance = await provider.getBalance(wallet.address);
-    console.log("eth balance:",ethers.formatEther(ethBalance.toString()))
+    console.log(`${wallet.address} eth balance:${ethers.formatEther(ethBalance.toString())}`);
 
     const tokenIn:Token = WETH_TOKEN;
-    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
-    let wethBalance = await tokenContract.balanceOf(wallet.address);
-    console.log("before deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+    const wethContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+    let wethBalance = await wethContract.balanceOf(wallet.address);
+    console.log(`before deposit ${wallet.address} wethBalance: ${ethers.formatEther(wethBalance.toString())}`);
 
-    const depositTransaction = await tokenContract.deposit(
+    const depositTransaction = await wethContract.deposit(
         {
-            value:ethers.parseEther("1")
+            value:ethers.parseEther("0.3")
         }
     )
     const reciept = await depositTransaction.wait();
-    wethBalance = await tokenContract.balanceOf(wallet.address);
-    console.log("after deposit wethBalance:",ethers.formatEther(wethBalance.toString()));
+    wethBalance = await wethContract.balanceOf(wallet.address);
+    console.log(`after deposit ${wallet.address} wethBalance: ${ethers.formatEther(wethBalance.toString())}`);
+    
     // console.log("deposit transaction:",depositTransaction);
     // console.log("deposit reciept:",reciept);
         
@@ -946,7 +947,7 @@ async function testExactOutputMultihop(){
 async function main(){
 
 
-    // await ethToWETH();
+    await ethToWETH();
     
     // await testWeb3();
 
@@ -965,7 +966,7 @@ async function main(){
 
     // await testExactOutput();
 
-    await testExactOutputMultihop();
+    // await testExactOutputMultihop();
 
 
 }
@@ -973,4 +974,3 @@ async function main(){
 
 
 main();
-
