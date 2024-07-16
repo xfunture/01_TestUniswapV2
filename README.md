@@ -78,3 +78,14 @@ HOLESKY_PRIVATE_KEY=
 ```
 npx hardhat run ./scripts/uniswapv3_ethersv6/testUniswapV3SingleHopSwap.ts
 ```
+### solidity 版本的代币交换功能
+合约代码:  
+./contract/UniswapV3SingleHopSwap.sol  
+测试代码:  
+单跳交换：./test/UniswapV3SingleHopSwap.ts
+多跳交换：./test/UniswapV3MultiHopSwap.ts  
+运行  
+```
+npx hardhat test ./test/UniswapV3SingleHopSwap.ts 
+npx hardhat test ./test/UniswapV3MultiHopSwap.ts 
+```
