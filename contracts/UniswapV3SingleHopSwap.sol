@@ -74,6 +74,12 @@ contract UniswapV3SingleHopSwap{
         console.log("fallback");
     }
 
+
+    function bytesToUint(bytes memory _bytes) internal pure returns (uint256 value) {
+        assembly {
+            value := mload(add(_bytes, 0x20))
+        }
+    }
     /**
      * 该函数将ETH转换为WETH，并且发送给owner
      * 调用着通过智能合约将msg.value(0.02) ETH转换为weth
@@ -167,8 +173,6 @@ contract UniswapV3SingleHopSwap{
         balanceContract = weth.balanceOf(address(this));
         console.log("Contract:%s after transferFrom weth balance:%s",address(this),balanceAfter);
         console.log("Contract:%s before transferFrom weth balance:%s",address(this),balanceContract);
-        getERC20Balance()
-
 
 
 
@@ -189,8 +193,7 @@ contract UniswapV3SingleHopSwap{
     {
         uint256 wethBalance = weth.balanceOf(address(this));
         console.log("wethBalance:",wethBalance);
-        weth.approve(address(this),amountIn);
-        weth.approve(address(router),amountIn);
+        weth.approve(address(uniswapRouter),amountIn);
 
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams(
@@ -206,6 +209,7 @@ contract UniswapV3SingleHopSwap{
             );
 
         amountOut = uniswapRouter.exactInputSingle(params);
+
         // (bool success, bytes memory amountBytes) = address(uniswapRouter).call(
         //     abi.encodeWithSelector(
         //         IV3SwapRouter.exactInputSingle.selector,
@@ -213,15 +217,154 @@ contract UniswapV3SingleHopSwap{
         //     )
         // );
         // return bytesToUint(amountBytes);
+
     }
 
 
-    function bytesToUint(bytes memory _bytes) internal pure returns (uint256 value) {
-        assembly {
-            value := mload(add(_bytes, 0x20))
-        }
+
+    function swapExactInput(
+        address token0,
+        address token1,
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        uint256 fee
+    ) external returns (uint256 amountOut ){
+        // struct ExactInputParams {
+        // bytes path;
+        // address recipient;
+        // uint256 amountIn;
+        // uint256 amountOutMinimum;
+
+        weth.approve(address(uniswapRouter),amountIn);
+        bytes memory path = abi.encodePacked(token0,uint24(fee),token1);
+
+        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
+            .ExactInputParams(
+                {
+                    path:path,
+                    recipient:owner,
+                    amountIn:amountIn,
+                    amountOutMinimum:amountOutMinimum
+
+                }
+            );
+        amountOut = uniswapRouter.exactInput(params);
+
+    }
+
+
+    /*
+     * 通过UniswapV3 实现指定输出数量的单跳交换
+     * 该函数调用的前提是本智能合约已经拥有了weth
+     */
+    function swapExactOutputSingle(
+        address token0,
+        address token1,
+        uint256 amountInMax,
+        uint256 amountOut,
+        uint256 fee
+        )
+        external returns(uint256 amountIn)
+    {
+        uint256 wethBalance = weth.balanceOf(address(this));
+        console.log("wethBalance:",wethBalance);
+        weth.approve(address(uniswapRouter),amountInMax);
+
+        IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter
+            .ExactOutputSingleParams(
+                {
+                    tokenIn:token0,
+                    tokenOut:token1,
+                    fee:uint24(fee),
+                    recipient:owner,
+                    amountOut:amountOut,
+                    amountInMaximum:amountInMax,
+                    sqrtPriceLimitX96:0
+                }
+            );
+
+        amountIn = uniswapRouter.exactOutputSingle(params);
+
+    }
+
+    function swapExactOutput(
+        address token0,
+        address token1,
+        uint256 amountInMax,
+        uint256 amountOut,
+        uint256 fee
+    ) external returns (uint256 amountIn){
+
+        weth.approve(address(uniswapRouter),amountInMax);
+        bytes memory path = abi.encodePacked(token1,uint24(fee),token0);
+
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
+            .ExactOutputParams(
+                {
+                    path:path,
+                    recipient:owner,
+                    amountOut:amountOut,
+                    amountInMaximum:amountInMax
+                }
+
+        );
+
+        amountIn = uniswapRouter.exactOutput(params);
+
+    }
+
+    function swapExactInputMultihop(
+        address token0,
+        address token1,
+        address token2,
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        uint256 fee
+    ) external returns(uint256 amountOut){
+
+        weth.approve(address(uniswapRouter),amountIn);
+        bytes memory path = abi.encodePacked(token0,uint24(fee),token1,uint24(fee),token2);
+
+        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
+            .ExactInputParams(
+                {
+                    path:path,
+                    recipient:owner,
+                    amountIn:amountIn,
+                    amountOutMinimum:amountOutMinimum
+
+                }
+            );
+        amountOut = uniswapRouter.exactInput(params);
+
     }
 
     
+    function swapExactOutputMultihop(
+        address token0,
+        address token1,
+        address token2,
+        uint256 amountInMax,
+        uint256 amountOut,
+        uint256 fee
+    ) external returns (uint256 amountIn){
+
+        weth.approve(address(uniswapRouter),amountInMax);
+        bytes memory path = abi.encodePacked(token2,uint24(fee),token1,uint24(fee),token0);
+
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
+            .ExactOutputParams(
+                {
+                    path:path,
+                    recipient:owner,
+                    amountOut:amountOut,
+                    amountInMaximum:amountInMax
+                }
+
+        );
+
+        amountIn = uniswapRouter.exactOutput(params);
+
+    }
 
 }

@@ -259,14 +259,14 @@ export async function quote2ExactOutputSingle(tokenIn:Token,tokenOut:Token,amoun
         Quoter2.abi,
         getProvider()
     )
-    console.log("\n\nquote2ExactOutputSingle");
+    // console.log("\n\nquote2ExactOutputSingle");
 
     // 获取Pool合约相关变量
     const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const sqrtPriceLimitX96 = 0;
     
-    console.log("poolConstants.token1:",poolConstants.token1);
-    console.log("poolConstants.token0:",poolConstants.token0);
+    // console.log("poolConstants.token1:",poolConstants.token1);
+    // console.log("poolConstants.token0:",poolConstants.token0);
     const params = {
         tokenIn:tokenIn.address,                                                // tokenIn
         tokenOut:tokenOut.address,                                               // tokenOut
@@ -281,10 +281,10 @@ export async function quote2ExactOutputSingle(tokenIn:Token,tokenOut:Token,amoun
         params                                                            // sqrtPriceLimit
     )
     // console.log("output:",output);
-    console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
-    console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
-    console.log("quoter2 amountIn:",ethers.formatUnits(output.amountIn,tokenIn.decimals));
-    console.log("gasEstimate:",output.gasEstimate.toString());
+    // console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
+    // console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
+    // console.log("quoter2 amountIn:",ethers.formatUnits(output.amountIn,tokenIn.decimals));
+    // console.log("gasEstimate:",output.gasEstimate.toString());
     return output;
 }
 
@@ -349,7 +349,7 @@ export async function quote2ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut
         Quoter2.abi,
         getProvider()
     )
-    console.log("\n\nquote2ExactOutput");
+    // console.log("\n\nquote2ExactOutput");
 
     let path = ethers.solidityPacked(
         ['address','uint24','address','uint24',"address"],
@@ -364,10 +364,10 @@ export async function quote2ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut
             tokenOut.decimals
             )
     )
-    console.log("sqrtPriceX96AfterList:",output.sqrtPriceX96AfterList);
-    console.log("initializedTicksCrossedList:",output.initializedTicksCrossedList);
-    console.log("quoter2 amountIn:",ethers.formatUnits(output.amountIn,tokenIn.decimals));
-    console.log("gasEstimate:",output.gasEstimate.toString());
+    // console.log("sqrtPriceX96AfterList:",output.sqrtPriceX96AfterList);
+    // console.log("initializedTicksCrossedList:",output.initializedTicksCrossedList);
+    // console.log("quoter2 amountIn:",ethers.formatUnits(output.amountIn,tokenIn.decimals));
+    // console.log("gasEstimate:",output.gasEstimate.toString());
 
     return output;
 }
@@ -401,7 +401,7 @@ export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:numb
         }
     )
 
-    console.log("currentPoolAddress:",poolAddress);
+    // console.log("currentPoolAddress:",poolAddress);
     const poolContract = new ethers.Contract(
         poolAddress,
         IUniswapV3PoolABI.abi,
