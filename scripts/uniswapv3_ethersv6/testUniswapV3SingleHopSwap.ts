@@ -707,6 +707,8 @@ async function exactInputMultihop(tokenIn:Token,tokenMiddle:Token,tokenOut:Token
  * Error: Transaction reverted without a reason string
  * UniswapV3 router2 报的错是：
  * reverted with reason string "STF"
+ * 该问题已经解决，
+ * 在approve 之前，先将eth wrap to weth 就能解决该问题
  */
 
 async function testExactInputSingle(){
@@ -943,11 +945,55 @@ async function testExactOutputMultihop(){
 }
 
 
+async function testSqrtPrice(){
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const inputAmount = 0.02;
+    const outputAmount:number = 100;
+    const poolFee:number = FeeAmount.MEDIUM;
+    const sqrtPriceLimitX96 = 0;
+    const tokenContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
+
+    const ethBalance = await provider.getBalance(wallet.address);
+    const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
+    console.log("ethBalance:",ethers.formatEther(ethBalance.toString()));
+
+
+    
+
+
+    //-----------------------------获取流动性池--------------------------------------
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,3000);
+    const poolContract = new ethers.Contract(
+        poolConstants.poolAddress,
+        IUniswapV3PoolABI.abi,
+        getProvider()
+    )
+
+    const immutables = await getPoolImmutables(poolContract);
+    const state = getPoolState(poolContract);
+
+    console.log("pool address:",poolConstants.poolAddress);
+    console.log("pool liquidity:",poolConstants.liquidity);
+    console.log("pool slot0:",poolConstants.slot0);
+    console.log("immutables:",immutables);
+    console.log("wallet address:",wallet.address);
+
+
+
+
+
+    const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+    const approvalAmount = amountIn;
+
+}
+
+
 
 async function main(){
 
 
-    await ethToWETH();
+    // await ethToWETH();
     
     // await testWeb3();
 
@@ -967,6 +1013,8 @@ async function main(){
     // await testExactOutput();
 
     // await testExactOutputMultihop();
+
+    await testSqrtPrice();
 
 
 }

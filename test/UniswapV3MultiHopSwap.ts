@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import  {
     loadFixture
 } from "@nomicfoundation/hardhat-network-helpers";
-import { DAI_TOKEN, USDC_TOKEN, WETH_ABI, WETH_TOKEN } from '../scripts/uniswapv3/libs/constants';
+import { DAI_TOKEN, UNI_TOKEN, USDC_TOKEN, WETH_ABI, WETH_TOKEN } from '../scripts/uniswapv3/libs/constants';
 import { Token } from '@uniswap/sdk-core';
 import { getProvider, wallet } from '../scripts/uniswapv3_ethersv6/lib/providers';
 import { ERC20_ABI } from '../scripts/uniswapv3_ethersv6/lib/constant';
@@ -75,7 +75,7 @@ describe("UniswapV3 swap",function(){
         it("swapExactInputMultihop",async function(){
             const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
             const inputAmount = 1;
-            const tradeAmount = 0.02;
+            const tradeAmount = 0.01;
             const outputAmount = 0.2;
             const tokenIn:Token = WETH_TOKEN;
             const tokenMiddle:Token = USDC_TOKEN;
@@ -121,7 +121,7 @@ describe("UniswapV3 swap",function(){
             const outputAmount = 100;
             const tokenIn:Token = WETH_TOKEN;
             const tokenMiddle:Token = USDC_TOKEN;
-            const tokenOut:Token = DAI_TOKEN;
+            const tokenOut:Token = UNI_TOKEN;
             const poolFee = 3000;
             const contractCddress = await uniswapv3Swap.getAddress()
             const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
@@ -162,6 +162,55 @@ describe("UniswapV3 swap",function(){
             const tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             console.log(`\tafter swapExactInput tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
         })
+
+        it("swapExactOutputMultihop reverse",async function(){
+            const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+            const inputAmount = 1;
+            const outputAmount = 100;
+            const tokenIn:Token = WETH_TOKEN;
+            const tokenMiddle:Token = UNI_TOKEN;
+            const tokenOut:Token = USDC_TOKEN;
+            const poolFee = 3000;
+            const contractCddress = await uniswapv3Swap.getAddress()
+            const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+            const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+
+
+
+            //---------------------------wrapEther-------------------------------------
+            let contractwethBalance = await wethContract.balanceOf(contractCddress);
+            console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+
+            await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+            
+            contractwethBalance = await wethContract.balanceOf(contractCddress);
+            console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+            expect(contractwethBalance).to.equal(amountIn);
+
+
+            // const quoteInput = await quote2ExactOutputSingle(tokenIn,tokenOut,outputAmount,poolFee);
+            const quoteInput = await quote2ExactOutput(tokenIn,tokenMiddle,tokenOut,outputAmount,poolFee);
+            const amountInMax = quoteInput.amountIn;
+            console.log("\tamountInMax:",ethers.formatUnits(amountInMax,tokenIn.decimals));
+
+            const tokenOutBalanceBefore = await getERC20Balance(wallet.address,tokenOut.address)
+
+            const output = await uniswapv3Swap.swapExactOutputMultihop(
+                tokenIn.address,
+                tokenMiddle.address,
+                tokenOut.address,
+                amountInMax,
+                amountOut,
+                poolFee
+            )
+
+
+            contractwethBalance = await wethContract.balanceOf(contractCddress);
+            console.log(`\tafter swapExactInput contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+            const tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+            console.log(`\tafter swapExactInput tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        })
+        
         
 
 
