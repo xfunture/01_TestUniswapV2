@@ -12,6 +12,7 @@ import "./interfaces/IWETH.sol";
 
 import "./interfaces/ISwapRouter02.sol";
 import "./interfaces/IV3SwapRouter.sol";
+import "./interfaces/uniswapv2/IUniswapV2Router02.sol";
 import "hardhat/console.sol";
 
 
@@ -22,8 +23,7 @@ contract UniswapV3SingleHopSwap{
 
     address payable public owner;
 
-    // ISwapRouter private constant router = ISwapRouter(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
-
+    address private constant u2RouterAddress = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     // address private constant USDC = 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48;
@@ -31,7 +31,8 @@ contract UniswapV3SingleHopSwap{
     IWETH private constant weth = IWETH(WETH);
     IERC20 private constant dai = IERC20(DAI);
 
-    ISwapRouter02 public immutable uniswapRouter;
+    ISwapRouter02 public immutable uniswapv3Router;
+    IUniswapV2Router02 public immutable uniswapv2Router;
     
 
 // Router1 
@@ -60,7 +61,8 @@ contract UniswapV3SingleHopSwap{
 
     constructor(address _uniswapRouter){
         owner = payable(msg.sender);
-        uniswapRouter = ISwapRouter02(_uniswapRouter);
+        uniswapv3Router = ISwapRouter02(_uniswapRouter);
+        uniswapv2Router = IUniswapV2Router02(u2RouterAddress);
         console.log("constructor router address",_uniswapRouter);
 
     }
@@ -193,7 +195,7 @@ contract UniswapV3SingleHopSwap{
     {
         uint256 wethBalance = weth.balanceOf(address(this));
         console.log("wethBalance:",wethBalance);
-        weth.approve(address(uniswapRouter),amountIn);
+        weth.approve(address(uniswapv3Router),amountIn);
 
         IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
             .ExactInputSingleParams(
@@ -208,7 +210,7 @@ contract UniswapV3SingleHopSwap{
                 }
             );
 
-        amountOut = uniswapRouter.exactInputSingle(params);
+        amountOut = uniswapv3Router.exactInputSingle(params);
 
         // (bool success, bytes memory amountBytes) = address(uniswapRouter).call(
         //     abi.encodeWithSelector(
@@ -235,7 +237,7 @@ contract UniswapV3SingleHopSwap{
         // uint256 amountIn;
         // uint256 amountOutMinimum;
 
-        weth.approve(address(uniswapRouter),amountIn);
+        weth.approve(address(uniswapv3Router),amountIn);
         bytes memory path = abi.encodePacked(token0,uint24(fee),token1);
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -248,7 +250,7 @@ contract UniswapV3SingleHopSwap{
 
                 }
             );
-        amountOut = uniswapRouter.exactInput(params);
+        amountOut = uniswapv3Router.exactInput(params);
 
     }
 
@@ -268,7 +270,7 @@ contract UniswapV3SingleHopSwap{
     {
         uint256 wethBalance = weth.balanceOf(address(this));
         console.log("wethBalance:",wethBalance);
-        weth.approve(address(uniswapRouter),amountInMax);
+        weth.approve(address(uniswapv3Router),amountInMax);
 
         IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter
             .ExactOutputSingleParams(
@@ -283,7 +285,7 @@ contract UniswapV3SingleHopSwap{
                 }
             );
 
-        amountIn = uniswapRouter.exactOutputSingle(params);
+        amountIn = uniswapv3Router.exactOutputSingle(params);
 
     }
 
@@ -295,7 +297,7 @@ contract UniswapV3SingleHopSwap{
         uint256 fee
     ) external returns (uint256 amountIn){
 
-        weth.approve(address(uniswapRouter),amountInMax);
+        weth.approve(address(uniswapv3Router),amountInMax);
         bytes memory path = abi.encodePacked(token1,uint24(fee),token0);
 
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
@@ -309,7 +311,7 @@ contract UniswapV3SingleHopSwap{
 
         );
 
-        amountIn = uniswapRouter.exactOutput(params);
+        amountIn = uniswapv3Router.exactOutput(params);
 
     }
 
@@ -322,7 +324,7 @@ contract UniswapV3SingleHopSwap{
         uint256 fee
     ) external returns(uint256 amountOut){
 
-        weth.approve(address(uniswapRouter),amountIn);
+        weth.approve(address(uniswapv3Router),amountIn);
         bytes memory path = abi.encodePacked(token0,uint24(fee),token1,uint24(fee),token2);
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -335,7 +337,7 @@ contract UniswapV3SingleHopSwap{
 
                 }
             );
-        amountOut = uniswapRouter.exactInput(params);
+        amountOut = uniswapv3Router.exactInput(params);
 
     }
 
@@ -349,7 +351,7 @@ contract UniswapV3SingleHopSwap{
         uint256 fee
     ) external returns (uint256 amountIn){
 
-        weth.approve(address(uniswapRouter),amountInMax);
+        weth.approve(address(uniswapv3Router),amountInMax);
         bytes memory path = abi.encodePacked(token2,uint24(fee),token1,uint24(fee),token0);
 
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
@@ -363,7 +365,24 @@ contract UniswapV3SingleHopSwap{
 
         );
 
-        amountIn = uniswapRouter.exactOutput(params);
+        amountIn = uniswapv3Router.exactOutput(params);
+
+    }
+
+    function swapExactETHForTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external payable returns(uint[] memory amounts){
+
+        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        weth.approve(address(uniswapv2Router),amountIn);
+        console.log("amountIn %s",amountIn);
+        console.log("amountOut %s",amountOut);
+        console.log("path0 %s",path[0]);
+        console.log("path1 %s",path[1]);
+
+        amounts = uniswapv2Router.swapETHForExactTokens{value:amountIn}(amountOut, path, to, deadline);
+
+        
 
     }
 
