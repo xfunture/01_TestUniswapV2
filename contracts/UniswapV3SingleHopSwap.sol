@@ -424,24 +424,11 @@ contract UniswapV3SingleHopSwap{
      */
     function swapExactTokensForTokensV1(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
-        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
 
-        console.log("path[0]:%s",path[0]);
-        console.log("path[1]:%s",path[1]);
         IERC20 erc20 = IERC20(path[0]);
-        // erc20.approve(address(uniswapv2Router),amountIn);
-        // erc20.approve(address(this),amountIn);
-        uint256 balanceOfOwner = erc20.balanceOf(owner);
-        uint256 balanceOfContract = erc20.balanceOf(address(this));
-        console.log("tokenIn amountIn:%s",owner,amountIn);
-        console.log("owner:%s  tokenIn balance:%s",owner,balanceOfOwner);
-        console.log("contract:%s  tokenIn balance:%s",owner,balanceOfContract);
-
-
-        erc20.transferFrom(msg.sender, address(this), amountIn);
-        // erc20.allowance(msg.sender, address(this));
-        // erc20.transferFrom(owner, address(this), amountIn);
-        // amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
+        erc20.transferFrom(owner, address(this), amountIn);
+        erc20.approve(address(uniswapv2Router),amountIn);
+        amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
 
     }
 
