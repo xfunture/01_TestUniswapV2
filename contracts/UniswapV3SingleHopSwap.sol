@@ -94,10 +94,10 @@ contract UniswapV3SingleHopSwap{
         uint256 balanceContract = weth.balanceOf(address(this));
         uint256 ethAmount = msg.value;
 
-        console.log("wrapEtherToOwner:");
-        console.log("ethAmount:",ethAmount);
-        console.log("msg.sender:%s before deposit weth balance:%s",msg.sender,balanceBefore);
-        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        // console.log("wrapEtherToOwner:");
+        // console.log("ethAmount:",ethAmount);
+        // console.log("msg.sender:%s before deposit weth balance:%s",msg.sender,balanceBefore);
+        // console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
         weth.deposit{value:ethAmount}();          
         weth.transfer(owner,ethAmount);
         uint256 balanceAfter = weth.balanceOf(msg.sender);
@@ -405,16 +405,43 @@ contract UniswapV3SingleHopSwap{
     function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
         // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
-        uint256 balanceContract = weth.balanceOf(address(this));
-        weth.transferFrom(owner, address(this), amountIn);
+
+
         weth.approve(address(uniswapv2Router),amountIn);
-        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
-        weth.approve(address(uniswapv2Router),amountIn);
-        console.log("amountIn %s",amountIn);
-        console.log("amountOutMin %s",amountOutMin);
-        console.log("path0 %s",path[0]);
-        console.log("path1 %s",path[1]);
         amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
+
+    }
+
+
+     /*
+     * 指定输入代币的数量兑换输出代币
+     * 在输入代币之前需要确保合约本身拥有代币
+     * @param amountIn 
+     * @param amountOut 
+     * @param path 
+     * @param to 
+     * @param deadline 
+     */
+    function swapExactTokensForTokensV1(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+
+        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
+
+        console.log("path[0]:%s",path[0]);
+        console.log("path[1]:%s",path[1]);
+        IERC20 erc20 = IERC20(path[0]);
+        // erc20.approve(address(uniswapv2Router),amountIn);
+        // erc20.approve(address(this),amountIn);
+        uint256 balanceOfOwner = erc20.balanceOf(owner);
+        uint256 balanceOfContract = erc20.balanceOf(address(this));
+        console.log("tokenIn amountIn:%s",owner,amountIn);
+        console.log("owner:%s  tokenIn balance:%s",owner,balanceOfOwner);
+        console.log("contract:%s  tokenIn balance:%s",owner,balanceOfContract);
+
+
+        erc20.transferFrom(msg.sender, address(this), amountIn);
+        // erc20.allowance(msg.sender, address(this));
+        // erc20.transferFrom(owner, address(this), amountIn);
+        // amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
 
     }
 
