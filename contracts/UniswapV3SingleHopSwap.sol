@@ -369,7 +369,16 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    function swapExactETHForTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external payable returns(uint[] memory amounts){
+    /*
+     * 指定ETH数量兑换输出代币
+     * 该函数在调用之前需要确保合约本身拥有ETH，而不是WETH
+     * @param amountIn 
+     * @param amountOut 
+     * @param path 
+     * @param to 
+     * @param deadline 
+     */
+    function swapExactETHForTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
         // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
         uint256 balanceContract = weth.balanceOf(address(this));
@@ -382,7 +391,30 @@ contract UniswapV3SingleHopSwap{
 
         amounts = uniswapv2Router.swapETHForExactTokens{value:amountIn}(amountOut, path, to, deadline);
 
-        
+    }
+
+    /*
+     * 指定ETH代币的数量兑换输出代币
+     * 在输入代币之前需要确保合约本身拥有代币
+     * @param amountIn 
+     * @param amountOut 
+     * @param path 
+     * @param to 
+     * @param deadline 
+     */
+    function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+
+        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 balanceContract = weth.balanceOf(address(this));
+        weth.transferFrom(owner, address(this), amountIn);
+        weth.approve(address(uniswapv2Router),amountIn);
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        weth.approve(address(uniswapv2Router),amountIn);
+        console.log("amountIn %s",amountIn);
+        console.log("amountOutMin %s",amountOutMin);
+        console.log("path0 %s",path[0]);
+        console.log("path1 %s",path[1]);
+        amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
 
     }
 
