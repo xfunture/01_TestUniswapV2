@@ -37,3 +37,27 @@ export function displayTrade(trade: Trade<Token, Token, TradeType>): string {
 export function createDeadLine():number{
   return Math.floor(Date.now()/1000) + 60 * 20; // 20 minutes from the current Unix time
 }
+
+/**
+ * 根据tick 计算当前tokenIn 资产相对于tokenOut 资产的价格
+ * @param tick 从slot0 中获取的第二个参数tick
+ * @param tokenInDecimals tokenIn decimals
+ * @param tokenOutDecimals tokenOut decimals
+ * @returns 
+ */
+export function priceFromTick(tick:number,tokenInDecimals:number,tokenOutDecimals:number):number{
+  return 1.0001 ** (-tick) * 10**tokenInDecimals / 10 ** tokenOutDecimals;
+}
+
+/**
+ * 从sqrtPriceX96 中计算tokenIn 相对于tokenOut 的价格
+ * @param sqrtPriceX96 从slot0 中获取的第一个参数sqrtPriceX96
+ * @param tokenInDecimals tokenIn decimals
+ * @param tokenOutDecimals tokenOut decimals
+ * @returns 
+ */
+export function priceFromSqrtPriceX96(sqrtPriceX96:number,tokenInDecimals:number,tokenOutDecimals:number):number{
+  const Q96 = 2 ** 96
+  return 1 / ( ( (sqrtPriceX96 / Q96) ** 2 ) / (10 ** tokenInDecimals) * (10 ** tokenOutDecimals) )
+  // return 1 / (( (sqrtPriceX96 / Q96) ** 2 ) * (10 ** tokenOutDecimals) / (10 ** tokenInDecimals));
+}

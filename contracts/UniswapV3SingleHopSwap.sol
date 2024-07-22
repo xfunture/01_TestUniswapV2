@@ -129,9 +129,10 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    /*
+
+    /**
      * 将weth 转为eth ，并且存储在合约当中
-     *
+     * @param amount weth to eth to contract
      */
     function unwrapEtherToContract(uint256 amount) external payable{
         console.log("unwrapEtherToContract:");
@@ -154,9 +155,10 @@ contract UniswapV3SingleHopSwap{
 
 
     }
-    /*
+
+    /**
      * 将weth转为eth，并且发送到个人账户owner
-     * 
+     * @param amount  weth to eth to owner
      */
     function unwrapEtherToOwner(uint256 amount) external payable{
         console.log("unwrapEtherToOwner:");
@@ -181,9 +183,13 @@ contract UniswapV3SingleHopSwap{
     }
 
    
-    /*
+    /**
      * 通过UniswapV3 实现指定输入数量的单跳交换
      * 该函数调用的前提是本智能合约已经拥有了weth
+     * @param token0 输入代币
+     * @param token1 输出代币
+     * @param amountIn 输入代币数量
+     * @param fee    手续费
      */
     function swapExactInputSingle(
         address token0,
@@ -223,7 +229,14 @@ contract UniswapV3SingleHopSwap{
     }
 
 
-
+    /**
+     * 通过UniswapV3 指定输入代币的数量实现单跳交换
+     * @param token0 输入代币
+     * @param token1 输出代币
+     * @param amountIn 输入代币数量
+     * @param amountOutMinimum 最小输出代币数量
+     * @param fee    手续费
+     */
     function swapExactInput(
         address token0,
         address token1,
@@ -255,9 +268,15 @@ contract UniswapV3SingleHopSwap{
     }
 
 
-    /*
+
+    /**
      * 通过UniswapV3 实现指定输出数量的单跳交换
      * 该函数调用的前提是本智能合约已经拥有了weth
+     * @param token0 输入代币
+     * @param token1 输出代币
+     * @param amountInMax 输入代币最大数量
+     * @param amountOut 输出代币数量
+     * @param fee 手续费
      */
     function swapExactOutputSingle(
         address token0,
@@ -289,6 +308,14 @@ contract UniswapV3SingleHopSwap{
 
     }
 
+    /**
+     * 通过UniswapV3 指定输出代币的数量，实现单跳交换
+     * @param token0 输入代币
+     * @param token1 输出代币
+     * @param amountInMax 输入代币最大数量
+     * @param amountOut 输出代币数量
+     * @param fee 手续费
+     */
     function swapExactOutput(
         address token0,
         address token1,
@@ -315,6 +342,15 @@ contract UniswapV3SingleHopSwap{
 
     }
 
+    /**
+     * 通过UniswapV3 router 指定输入代币的数量实现多跳交换
+     * @param token0 输入代币
+     * @param token1 中间代币
+     * @param token2 输出代币
+     * @param amountIn 输入代币数量
+     * @param amountOutMinimum 输出代币最小数量
+     * @param fee 手续费
+     */
     function swapExactInputMultihop(
         address token0,
         address token1,
@@ -341,7 +377,16 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    
+    /**
+     * 通过UniswapV3 router 指定输出代币的数量，实现多跳代币交换
+     * 指
+     * @param token0 输入代币
+     * @param token1 中间代币
+     * @param token2 输出代币
+     * @param amountInMax 输入代币最小数量
+     * @param amountOut 最大输出代币数量
+     * @param fee    手续费
+     */
     function swapExactOutputMultihop(
         address token0,
         address token1,
@@ -372,11 +417,11 @@ contract UniswapV3SingleHopSwap{
     /*
      * 指定ETH数量兑换输出代币
      * 该函数在调用之前需要确保合约本身拥有ETH，而不是WETH
-     * @param amountIn 
-     * @param amountOut 
-     * @param path 
-     * @param to 
-     * @param deadline 
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
      */
     function swapExactETHForTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
@@ -396,11 +441,11 @@ contract UniswapV3SingleHopSwap{
     /*
      * 指定ETH代币的数量兑换输出代币
      * 在输入代币之前需要确保合约本身拥有代币
-     * @param amountIn 
-     * @param amountOut 
-     * @param path 
-     * @param to 
-     * @param deadline 
+     * @param amountIn 输入代币数量
+     * @param amountOutMin 输出代币最小数量
+     * @param path 代币交换路径，【tokenIn,tokenOut】
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
      */
     function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
@@ -416,11 +461,11 @@ contract UniswapV3SingleHopSwap{
      /*
      * 指定输入代币的数量兑换输出代币
      * 在输入代币之前需要确保合约本身拥有代币
-     * @param amountIn 
-     * @param amountOut 
-     * @param path 
-     * @param to 
-     * @param deadline 
+     * @param amountIn 输入代币数量
+     * @param amountOutMin 输出代币最小数量
+     * @param path 代币交换路径 [tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
      */
     function swapExactTokensForTokensV1(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 

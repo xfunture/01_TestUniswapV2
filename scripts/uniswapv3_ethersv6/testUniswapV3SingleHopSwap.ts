@@ -6,7 +6,7 @@ import { createTrade, getInTokenTransferApproval, getOutTokenTransferApproval, g
 import { getOutputQuote,TokenTrade} from './lib/trading';
 import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
-import { createDeadLine, fromReadableAmount } from './lib/utils';
+import { createDeadLine, fromReadableAmount, priceFromSqrtPriceX96, priceFromTick } from './lib/utils';
 import { getNonceFromBlock, getNonceLocal, getProvider, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
 import * as fs from 'fs';
 import { DAI_TOKEN, ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
@@ -16,13 +16,14 @@ import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol
 import { assertArgumentCount, ethers } from 'ethers';
 
 
-import {eth, Web3} from 'web3';
-import { sign } from 'web3/lib/commonjs/eth.exports';
-import { Web3Account } from 'web3-eth-accounts';
+// import {eth, Web3} from 'web3';
+// import { sign } from 'web3/lib/commonjs/eth.exports';
+// import { Web3Account } from 'web3-eth-accounts';
 import WETH_ABI from './abis/weth.json';
+import { declare } from '../../typechain-types/contracts/interfaces/IApproveAndCall';
 
 
-const web3 = new Web3(CurrentConfig.rpc.local);
+// const web3 = new Web3(CurrentConfig.rpc.local);
 
 
 const DAI_CONTRACT_ABI = fs.readFileSync("./contracts/abis/DAIAbi.json").toString();
@@ -96,135 +97,135 @@ async function ethToWETH(){
 
 
 
-/**
- * 通过web3.js 发送交易
- * @param walle
- * t_address 
- * @param from 
- * @param to 
- * @param encodeData 
- * @returns 
- */
-async function sendTransactionWeb3(wallet_address:string,from:string,to:string,encodeData:string){
+// /**
+//  * 通过web3.js 发送交易
+//  * @param walle
+//  * t_address 
+//  * @param from 
+//  * @param to 
+//  * @param encodeData 
+//  * @returns 
+//  */
+// async function sendTransactionWeb3(wallet_address:string,from:string,to:string,encodeData:string){
 
-    let nonce = await web3.eth.getTransactionCount(CurrentConfig.wallet.address);
-    let gasPrice = await web3.eth.getGasPrice();
-    let gas = 320000;
+//     let nonce = await web3.eth.getTransactionCount(CurrentConfig.wallet.address);
+//     let gasPrice = await web3.eth.getGasPrice();
+//     let gas = 320000;
 
-    const approveTx = {
-        nonce:nonce,
-        gasPrice:gasPrice,
-        from:from,
-        to:to,
-        value:BigInt(0),
-        gas:gas,
-        data:encodeData,
-    }
+//     const approveTx = {
+//         nonce:nonce,
+//         gasPrice:gasPrice,
+//         from:from,
+//         to:to,
+//         value:BigInt(0),
+//         gas:gas,
+//         data:encodeData,
+//     }
 
-    let signedTransaction = await web3.eth.accounts.signTransaction(approveTx,wallet.privateKey)
-    console.log("signedTransaction:",signedTransaction);
-    let sendTransaction = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
-    console.log("sendTransaction:",sendTransaction);
+//     let signedTransaction = await web3.eth.accounts.signTransaction(approveTx,wallet.privateKey)
+//     console.log("signedTransaction:",signedTransaction);
+//     let sendTransaction = await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction);
+//     console.log("sendTransaction:",sendTransaction);
 
-    return sendTransaction;
-}
+//     return sendTransaction;
+// }
 
-/**
- * 通过web3.js 测试UniswapV3 exactInputSingle
- * 测试失败
- * 原因：Error: Transaction reverted without a reason string
- */
-async function testWeb3(){
+// /**
+//  * 通过web3.js 测试UniswapV3 exactInputSingle
+//  * 测试失败
+//  * 原因：Error: Transaction reverted without a reason string
+//  */
+// async function testWeb3(){
 
-    console.log("TestWeb3");
-
-
+//     console.log("TestWeb3");
 
 
-    const account = web3.eth.accounts.privateKeyToAccount(CurrentConfig.wallet.privateKey)
 
 
-    const tokenIn:Token = WETH_TOKEN;
-    const tokenOut:Token = UNI_TOKEN;
-    const inputAmount = 0.02;
-    const amountIn = web3.utils.toWei(inputAmount,'ether');
-    const poolFee = 3000;
+//     const account = web3.eth.accounts.privateKeyToAccount(CurrentConfig.wallet.privateKey)
 
-     // 获取Pool合约相关变量
-     const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
-     const sqrtPriceLimitX96 = 0;
+
+//     const tokenIn:Token = WETH_TOKEN;
+//     const tokenOut:Token = UNI_TOKEN;
+//     const inputAmount = 0.02;
+//     const amountIn = web3.utils.toWei(inputAmount,'ether');
+//     const poolFee = 3000;
+
+//      // 获取Pool合约相关变量
+//      const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
+//      const sqrtPriceLimitX96 = 0;
      
-     console.log("poolConstants.token1:",poolConstants.token1);
-     console.log("poolConstants.token0:",poolConstants.token0);
+//      console.log("poolConstants.token1:",poolConstants.token1);
+//      console.log("poolConstants.token0:",poolConstants.token0);
 
-    const uniswapv3Router = new web3.eth.Contract(JSON.parse(UNISWAPV3_ROUTER_ABI),UNISWAPV3_ROUTER_ADDRESS);
-    const erc20Contract = new web3.eth.Contract(JSON.parse(WETH_CONTRACT_ABI),tokenIn.address);
-    // Router1 
-    //  struct ExactInputSingleParams {
-    //     address tokenIn;
-    //     address tokenOut;
-    //     uint24 fee;
-    //     address recipient;
-    //     uint256 deadline;
-    //     uint256 amountIn;
-    //     uint256 amountOutMinimum;
-    //     uint160 sqrtPriceLimitX96;
-    // }
-
-    
-    const approveEncodeData = erc20Contract.methods.approve(wallet.address,amountIn).encodeABI();
-    console.log("approveEncodeData:",approveEncodeData);
-
-    sendTransactionWeb3(wallet.address,wallet.address,tokenIn.address,approveEncodeData);
-
-
-
-
-    /**********************build transaction from exactInputSingle */
-
-
-    const params = {
-        tokenIn:tokenIn.address,
-        tokenOut:tokenOut.address,
-        fee:BigInt(poolFee),
-        recipient:account.address,
-        deadline:createDeadLine(),
-        amountIn:BigInt(amountIn),
-        amountOutMinimum:BigInt(0),
-        sqrtPriceLimitX96:BigInt(0)
-
-    }
-    const exactInputSingleEncodeData = uniswapv3Router.methods.exactInputSingle(params).encodeABI();
-    console.log("exactInputSingleEncodeData:",exactInputSingleEncodeData);
-
-
-    const block = await web3.eth.getBlock('latest');
-    console.log("block:",block);
-    const gasLimit = BigInt(100000);
-    let nonce = await web3.eth.getTransactionCount(account.address);
-    let gasPrice = await web3.eth.getGasPrice();
-    let gas = 320000;
-    nonce = await web3.eth.getTransactionCount(account.address);
-    console.log("nonce:",nonce);
+//     const uniswapv3Router = new web3.eth.Contract(JSON.parse(UNISWAPV3_ROUTER_ABI),UNISWAPV3_ROUTER_ADDRESS);
+//     const erc20Contract = new web3.eth.Contract(JSON.parse(WETH_CONTRACT_ABI),tokenIn.address);
+//     // Router1 
+//     //  struct ExactInputSingleParams {
+//     //     address tokenIn;
+//     //     address tokenOut;
+//     //     uint24 fee;
+//     //     address recipient;
+//     //     uint256 deadline;
+//     //     uint256 amountIn;
+//     //     uint256 amountOutMinimum;
+//     //     uint160 sqrtPriceLimitX96;
+//     // }
 
     
-    const tx = {
-        nonce:nonce,
-        gasPrice:gasPrice,
-        from:account.address,
-        to:UNISWAPV3_ROUTER_ADDRESS,
-        value:amountIn,
-        gas:gas,
-        data:exactInputSingleEncodeData,
-    }
+//     const approveEncodeData = erc20Contract.methods.approve(wallet.address,amountIn).encodeABI();
+//     console.log("approveEncodeData:",approveEncodeData);
 
-    const signedTx = await web3.eth.accounts.signTransaction(tx,CurrentConfig.wallet.privateKey);
-    const sendTx = await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
-
-    console.log("sendTx:",sendTx);
+//     sendTransactionWeb3(wallet.address,wallet.address,tokenIn.address,approveEncodeData);
 
 
-}
+
+
+//     /**********************build transaction from exactInputSingle */
+
+
+//     const params = {
+//         tokenIn:tokenIn.address,
+//         tokenOut:tokenOut.address,
+//         fee:BigInt(poolFee),
+//         recipient:account.address,
+//         deadline:createDeadLine(),
+//         amountIn:BigInt(amountIn),
+//         amountOutMinimum:BigInt(0),
+//         sqrtPriceLimitX96:BigInt(0)
+
+//     }
+//     const exactInputSingleEncodeData = uniswapv3Router.methods.exactInputSingle(params).encodeABI();
+//     console.log("exactInputSingleEncodeData:",exactInputSingleEncodeData);
+
+
+//     const block = await web3.eth.getBlock('latest');
+//     console.log("block:",block);
+//     const gasLimit = BigInt(100000);
+//     let nonce = await web3.eth.getTransactionCount(account.address);
+//     let gasPrice = await web3.eth.getGasPrice();
+//     let gas = 320000;
+//     nonce = await web3.eth.getTransactionCount(account.address);
+//     console.log("nonce:",nonce);
+
+    
+//     const tx = {
+//         nonce:nonce,
+//         gasPrice:gasPrice,
+//         from:account.address,
+//         to:UNISWAPV3_ROUTER_ADDRESS,
+//         value:amountIn,
+//         gas:gas,
+//         data:exactInputSingleEncodeData,
+//     }
+
+//     const signedTx = await web3.eth.accounts.signTransaction(tx,CurrentConfig.wallet.privateKey);
+//     const sendTx = await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
+
+//     console.log("sendTx:",sendTx);
+
+
+// }
 
 
 
@@ -276,7 +277,9 @@ async function getPoolImmutables(poolContract:ethers.Contract){
 async function getPoolState(poolContract:ethers.Contract){
     const slot = await poolContract.slot0();
     const state = {
-        sqrtPriceX96:slot[0]
+        sqrtPriceX96:slot[0],
+        tick:slot[1],
+
     }
     return state;
 }
@@ -963,12 +966,28 @@ async function testSqrtPrice(){
 
 
     //-----------------------------获取流动性池--------------------------------------
-    const poolConstants = await getPoolConstants(tokenIn,tokenOut,3000);
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const poolContract = new ethers.Contract(
         poolConstants.poolAddress,
         IUniswapV3PoolABI.abi,
         getProvider()
     )
+
+    const sqrtPriceX96 = poolConstants.slot0[0];
+    const tick = poolConstants.slot0[1];
+    // const tickToPrice = 1.0001 ** Number(-tick) * 10**tokenIn.decimals / 10 ** tokenOut.decimals;
+    const tickToPrice = priceFromTick(Number(tick),tokenIn.decimals,tokenOut.decimals);
+    
+    // const tokenInPrice = ((Number(sqrtPriceX96) / Q96) ** 2) / (10 ** tokenIn.decimals) * (10 ** tokenOut.decimals) ;
+    const tokenInPrice = priceFromSqrtPriceX96(Number(sqrtPriceX96),tokenIn.decimals,tokenOut.decimals);
+
+    console.log("sqrtPriceX96:",sqrtPriceX96);
+    console.log("tick:",tick);
+    console.log("tokenIn.decimals:",tokenIn.decimals);
+    console.log("tokenOut.decimals:",tokenOut.decimals);
+    console.log("tick to price:",tickToPrice);
+    console.log("sqrtPriceX96 to price:",tokenInPrice);
+    
 
     const immutables = await getPoolImmutables(poolContract);
     const state = getPoolState(poolContract);
@@ -985,6 +1004,56 @@ async function testSqrtPrice(){
 
     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
     const approvalAmount = amountIn;
+
+}
+
+
+async function calculatePoolPriceDiff(){
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenMiddle:Token = UNI_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    // const tokenMiddle:Token = APE_TOKEN;
+    // const tokenMiddle:Token = DAI_TOKEN;
+    // const tokenOut:Token = APE_TOKEN;
+    const amountIn:number = 1;
+    const amountOut:number = 100;
+    let poolFee:number = FeeAmount.MEDIUM;
+
+
+    console.log("Target symbol: ",tokenOut.symbol);
+    console.log(`Input  symbol: ${tokenIn.symbol}`);
+    console.log(`Output symbol: ${tokenOut.symbol}`);
+    console.log(`Input  amount: ${amountIn}`);
+
+    poolFee = FeeAmount.HIGH;
+    let outputAmount1 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let feeHigh = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)} fee:${feeHigh}`);
+
+    poolFee = FeeAmount.MEDIUM;
+    let outputAmount2 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let feeMedium = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)} fee:${feeMedium}`);
+
+    poolFee = FeeAmount.LOW;
+    let outputAmount3 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let feeLow = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)} fee:${feeLow}`);
+
+    const diff1HighAndMedium = ethers.formatUnits(outputAmount2 - outputAmount1,tokenOut.decimals);
+    const diffMediumAndLow = ethers.formatUnits(outputAmount3 - outputAmount2,tokenOut.decimals);
+    const diffHighAndLow = ethers.formatUnits(outputAmount3 - outputAmount1,tokenOut.decimals);
+
+
+
+    console.log(`10000 Pool and  3000 Pool diff1HighAndMedium:${diff1HighAndMedium} feeSum:${feeHigh +feeMedium}`);
+    console.log(`3000 Pool fee and 500 Pool diffMediumAndLow:${diffMediumAndLow} feeSum:${feeMedium+feeLow}`);
+    console.log(`10000 Pool and 500 Pool diffHighAndLow:${diffHighAndLow} feeSum:${feeHigh+feeLow}`);
+
+
+
+
+
 
 }
 
@@ -1015,6 +1084,8 @@ async function main(){
     // await testExactOutputMultihop();
 
     await testSqrtPrice();
+
+    // await calculatePoolPriceDiff();
 
 
 }

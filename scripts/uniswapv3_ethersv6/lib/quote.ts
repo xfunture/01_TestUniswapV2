@@ -30,14 +30,14 @@ export async function quote1ExactInputSingle(tokenIn:Token,tokenOut:Token,amount
         Quoter.abi,
         getProvider()
     )
-    console.log("\n\nquote1ExactInputSingle");
+    // console.log("\n\nquote1ExactInputSingle");
 
     // 获取Pool合约相关变量
     const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const sqrtPriceLimitX96 = 0;
     
-    console.log("poolConstants.token1:",poolConstants.token1);
-    console.log("poolConstants.token0:",poolConstants.token0);
+    // console.log("poolConstants.token1:",poolConstants.token1);
+    // console.log("poolConstants.token0:",poolConstants.token0);
     // console.log("amountIn:",CurrentConfig.tokens.amountIn);
     const quoteAmountQut = await quoterContract.quoteExactInputSingle.staticCall(
         tokenIn.address,                                                // tokenIn
@@ -50,7 +50,7 @@ export async function quote1ExactInputSingle(tokenIn:Token,tokenOut:Token,amount
         sqrtPriceLimitX96                                                               // sqrtPriceLimit
     )
     // return toReadableAmount(quoteAmountQut,CurrentConfig.tokens.out.decimals);
-    console.log("quoter1 amountOut:",ethers.formatUnits(quoteAmountQut.toString(),tokenOut.decimals));
+    // console.log("quoter1 amountOut:",ethers.formatUnits(quoteAmountQut.toString(),tokenOut.decimals));
     return quoteAmountQut;
 }
 
@@ -382,6 +382,17 @@ export async function quote2ExactOutput(tokenIn:Token,tokenMiddle:Token,tokenOut
  * }
  * 该方法会通过batch Promise 同步查询合约的状态数据，而不是顺序查询。
  * 同步查询而不是顺序查询，是因为顺序查询有可能产生两个区块的数据不一致的问题。
+ * 智能合约中slot0结构如下：
+ * struct Slot0{
+	uint160 sqrtPriceX96;     		    // uint160 代表的是整型160位，除以8 ，第一个变量sqrtPriceX96 占20个字节
+	int24 tick;	          		        // 占3个字节，
+	uint16 observationIndex;            // 占2个字节
+	uint16 observationCardinality;      // 占2个字节
+	uint16 observationCardinalityNext; 	// 占2个字节
+	uint8 feeProtocol;			        // 占1个字节
+	bool unlocked; 				        // 占一个字节,whether the pool is locked，
+
+}
  * @returns 
  */
 export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:number):Promise<{
@@ -390,7 +401,7 @@ export async function getPoolConstants(tokenIn:Token,tokenOut:Token,poolFee:numb
     token1:string,
     fee:number,
     liquidity:BigInt,
-    slot0:BigInt
+    slot0:Array<bigint>
 }>{
     const poolAddress = computePoolAddress(
         {

@@ -7,10 +7,8 @@ import { DAI_TOKEN, UNI_TOKEN, USDC_TOKEN, WETH_ABI, WETH_TOKEN } from '../scrip
 import { CurrencyAmount, Percent, Token, TradeType } from '@uniswap/sdk-core';
 import { getProvider, wallet } from '../scripts/uniswapv3_ethersv6/lib/providers';
 import { ERC20_ABI } from '../scripts/uniswapv3_ethersv6/lib/constant';
-import { uniswap } from '../typechain-types';
 import { quote2ExactOutput, quote2ExactOutputSingle } from '../scripts/uniswapv3_ethersv6/lib/quote';
 import {Pair,Route,Trade} from "@uniswap/v2-sdk";
-import { ProviderError } from 'web3';
 import * as fs from 'fs';
 import { createDeadLine } from '../scripts/uniswapv3/libs/utils';
 import { WETH } from '@uniswap/sdk';
@@ -191,7 +189,7 @@ describe("UniswapV3 swap",function(){
         })
 
 
-        it("swapExactTokensForTokens",async function(){
+        it("swapExactTokensForTokens WETH TO DAI",async function(){
             const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
             const inputAmount = 1;
             const tradeAmount = 0.02;
