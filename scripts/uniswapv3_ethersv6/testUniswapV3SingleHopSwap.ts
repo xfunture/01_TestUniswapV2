@@ -947,7 +947,10 @@ async function testExactOutputMultihop(){
 
 }
 
-
+/**
+ * 1. 根据tick计算当前资产的价格
+ * 2. 根据sqrtPriceX96 计算当前资产的价格
+ */
 async function testSqrtPrice(){
     const tokenIn:Token = WETH_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
@@ -960,10 +963,6 @@ async function testSqrtPrice(){
     const ethBalance = await provider.getBalance(wallet.address);
     const tokenOutBalance1 = await getERC20Balance(wallet.address,tokenOut.address);
     console.log("ethBalance:",ethers.formatEther(ethBalance.toString()));
-
-
-    
-
 
     //-----------------------------获取流动性池--------------------------------------
     const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
@@ -995,15 +994,8 @@ async function testSqrtPrice(){
     console.log("pool address:",poolConstants.poolAddress);
     console.log("pool liquidity:",poolConstants.liquidity);
     console.log("pool slot0:",poolConstants.slot0);
-    console.log("immutables:",immutables);
-    console.log("wallet address:",wallet.address);
 
 
-
-
-
-    const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-    const approvalAmount = amountIn;
 
 }
 
@@ -1083,9 +1075,9 @@ async function main(){
 
     // await testExactOutputMultihop();
 
-    await testSqrtPrice();
+    // await testSqrtPrice();
 
-    // await calculatePoolPriceDiff();
+    await calculatePoolPriceDiff();
 
 
 }

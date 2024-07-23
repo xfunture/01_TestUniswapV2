@@ -414,7 +414,7 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    /*
+    /* uniswapv2
      * 指定ETH数量兑换输出代币
      * 该函数在调用之前需要确保合约本身拥有ETH，而不是WETH
      * @param amountIn 输入代币数量
@@ -439,6 +439,7 @@ contract UniswapV3SingleHopSwap{
     }
 
     /*
+     * uniswapv2 
      * 指定ETH代币的数量兑换输出代币
      * 在输入代币之前需要确保合约本身拥有代币
      * @param amountIn 输入代币数量
@@ -458,7 +459,7 @@ contract UniswapV3SingleHopSwap{
     }
 
 
-     /*
+     /*uniswapv2
      * 指定输入代币的数量兑换输出代币
      * 在输入代币之前需要确保合约本身拥有代币
      * @param amountIn 输入代币数量
@@ -474,6 +475,43 @@ contract UniswapV3SingleHopSwap{
         erc20.transferFrom(owner, address(this), amountIn);
         erc20.approve(address(uniswapv2Router),amountIn);
         amounts = uniswapv2Router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
+
+    }
+
+
+    /* uniswapv2 存在bug
+     * 指定输入代币数量兑换输出代币ETH
+     * 该函数在调用之前需要确保合约本身拥有输入token
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapExactTokensForETH(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+
+        IERC20 erc20 = IERC20(path[0]);
+        erc20.transferFrom(owner, address(this), amountIn);
+        erc20.approve(address(uniswapv2Router),amountIn);
+        amounts = uniswapv2Router.swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
+
+    }
+
+    /* uniswapv2 存在bug
+     * 输入代币兑换指定数量的输出代币
+     * 该函数在调用之前需要确保合约本身拥有输入token
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapTokensForExactETH(uint256 amountOut,uint256 amountInMax, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+
+        IERC20 erc20 = IERC20(path[0]);
+        erc20.transferFrom(owner, address(this), amountInMax);
+        erc20.approve(address(uniswapv2Router),amountInMax);
+        amounts = uniswapv2Router.swapTokensForExactETH(amountOut, amountInMax, path, to, deadline);
 
     }
 
