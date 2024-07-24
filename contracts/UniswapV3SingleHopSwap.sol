@@ -497,8 +497,8 @@ contract UniswapV3SingleHopSwap{
 
     }
 
-    /* uniswapv2 存在bug
-     * 输入代币兑换指定数量的输出代币
+    /* uniswapv2 
+     * 输入代币兑换指定数量的输出代币,该函数当设置to为个人账户的时候可以接收到eth,当to设置为合约账户时，并没有收到eth
      * 该函数在调用之前需要确保合约本身拥有输入token
      * @param amountIn 输入代币数量
      * @param amountOut 输出代币数量

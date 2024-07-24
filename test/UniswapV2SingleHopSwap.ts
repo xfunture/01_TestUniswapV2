@@ -443,7 +443,7 @@ describe("UniswapV3 swap",function(){
             tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
             contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\n\tafter swapExactTokensForTokens contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
             console.log(`\tafter swapExactTokensForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             console.log("\tafter swapExactTokensForTokens contract eth balance:",ethers.formatEther(contractethBalance));
 
@@ -452,7 +452,7 @@ describe("UniswapV3 swap",function(){
 
             /***************************************USDC TO ETH **********************************************************/
             inputAmount = 1;
-            tradeAmount = 1000;
+            tradeAmount = 500;
             outputAmount = 0.2;
             tokenIn = USDC_TOKEN;
             const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
@@ -466,19 +466,17 @@ describe("UniswapV3 swap",function(){
             const amount_to_sell_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
             tokenOutAmount = amountsOut[1];
+            console.log("\tamountsOut:",amountsOut);
             console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            to = contractCddress;
+            to = wallet.address;
             tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            let ethOwnerBalance = await provider.getBalance(wallet.address);
             let ethContractBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tbefore swapExactTokensForETH contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForETH owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+            let ethOwnerBalance = await provider.getBalance(wallet.address);
+            console.log(`\n\tbefore swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tbefore swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             console.log(`\tbefore swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
-
-
-
+            console.log(`\tbefore swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
 
             // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
             await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
@@ -491,14 +489,14 @@ describe("UniswapV3 swap",function(){
                 deadline,
                  )
 
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            ethOwnerBalance = await provider.getBalance(wallet.address);
+            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             ethContractBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapExactTokensForETH contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForETH owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+            ethOwnerBalance = await provider.getBalance(wallet.address);
+            console.log(`\n\tafter swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tafter swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             console.log(`\tafter swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+            console.log(`\tafter swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
 
 
 
@@ -586,8 +584,7 @@ describe("UniswapV3 swap",function(){
 
             /***************************************USDC TO WETH **********************************************************/
             inputAmount = 1;
-            tradeAmount = 0.1;
-            outputAmount = 0.04;
+            tradeAmount = 0.2;
             tokenIn = USDC_TOKEN;
             const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
             tokenMiddle = DAI_TOKEN;
@@ -601,13 +598,13 @@ describe("UniswapV3 swap",function(){
             console.log("\tamountsIn:",amountsIn);
             const amountInMax = amountsIn[0];
             console.log("\n\tamountInMax:",ethers.formatUnits(amountInMax,tokenIn.decimals));
-            to = contractCddress;
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+            to = wallet.address;
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             ethOwnerBalance = await provider.getBalance(wallet.address);
             let ethContractBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tbefore swapTokensForExactETH contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+            console.log(`\n\tbefore swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tbefore swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
             console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
 
@@ -626,9 +623,13 @@ describe("UniswapV3 swap",function(){
 
             tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tafter swapTokensForExactETH contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapTokensForExactETH owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            
+            ethOwnerBalance = await provider.getBalance(wallet.address);
+            ethContractBalance = await provider.getBalance(contractCddress);
+            console.log(`\n\tafter swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tafter swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+            console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+            console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+
             /***************************************USDC TO WETH **********************************************************/
 
         })

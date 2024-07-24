@@ -72,20 +72,21 @@ export async function quote1ExactInputSingle(tokenIn:Token,tokenOut:Token,amount
  * quoteExactOutput - given the amount you want to get out, produces a quote for the amount in for a swap over multiple pools
  * @returns 
  */
-export async function quote2ExactInputSingle(tokenIn:Token,tokenOut:Token,amountIn:number,poolFee:number){
+export async function 
+quote2ExactInputSingle(tokenIn:Token,tokenOut:Token,amountIn:number,poolFee:number){
     const quoterContract = new ethers.Contract(
         QUOTER2_CONTRACT_ADDRESS,
         Quoter2.abi,
         getProvider()
     )
-    console.log("\n\nquote2ExactInputSingle");
+    // console.log("\n\nquote2ExactInputSingle");
 
     // 获取Pool合约相关变量
-    const poolConstants = await getPoolConstants(tokenIn,tokenOut,CurrentConfig.tokens.poolFee);
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const sqrtPriceLimitX96 = 0;
     
-    console.log("poolConstants.token1:",poolConstants.token1);
-    console.log("poolConstants.token0:",poolConstants.token0);
+    // console.log("poolConstants.token1:",poolConstants.token1);
+    // console.log("poolConstants.token0:",poolConstants.token0);
     // console.log("amountIn:",CurrentConfig.tokens.amountIn);
     const params = {
         tokenIn:tokenIn.address,                                                // tokenIn
@@ -101,10 +102,10 @@ export async function quote2ExactInputSingle(tokenIn:Token,tokenOut:Token,amount
     const output = await quoterContract.quoteExactInputSingle.staticCall(
         params                                                            // sqrtPriceLimit
     )
-    console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
-    console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
-    console.log("quoter2 amountOut:",ethers.formatUnits(output.amountOut,tokenOut.decimals));
-    console.log("gasEstimate:",output.gasEstimate.toString());
+    // console.log("sqrtPriceX96After:",output.sqrtPriceX96After.toString());
+    // console.log("initializedTicksCrossed:",output.initializedTicksCrossed.toString());
+    // console.log("quoter2 amountOut:",ethers.formatUnits(output.amountOut,tokenOut.decimals));
+    // console.log("gasEstimate:",output.gasEstimate.toString());
     return output;
 }
 

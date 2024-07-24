@@ -21,6 +21,7 @@ import { assertArgumentCount, ethers } from 'ethers';
 // import { Web3Account } from 'web3-eth-accounts';
 import WETH_ABI from './abis/weth.json';
 import { declare } from '../../typechain-types/contracts/interfaces/IApproveAndCall';
+import { TokenAmount } from '@uniswap/sdk';
 
 
 // const web3 = new Web3(CurrentConfig.rpc.local);
@@ -80,10 +81,9 @@ async function ethToWETH(){
     const wethContract = new ethers.Contract(tokenIn.address,WETH_ABI,wallet);
     let wethBalance = await wethContract.balanceOf(wallet.address);
     console.log(`before deposit ${wallet.address} wethBalance: ${ethers.formatEther(wethBalance.toString())}`);
-
     const depositTransaction = await wethContract.deposit(
         {
-            value:ethers.parseEther("0.3")
+            value:ethers.parseEther("1")
         }
     )
     const reciept = await depositTransaction.wait();
@@ -718,7 +718,7 @@ async function testExactInputSingle(){
 
     const tokenIn:Token = WETH_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
-    const inputAmount = 0.02;
+    const inputAmount = 1;
     const outputAmount:number = 100;
     const poolFee:number = FeeAmount.MEDIUM;
     const sqrtPriceLimitX96 = 0;
@@ -733,7 +733,7 @@ async function testExactInputSingle(){
 
 
     //-----------------------------获取流动性池--------------------------------------
-    const poolConstants = await getPoolConstants(tokenIn,tokenOut,3000);
+    const poolConstants = await getPoolConstants(tokenIn,tokenOut,poolFee);
     const poolContract = new ethers.Contract(
         poolConstants.poolAddress,
         IUniswapV3PoolABI.abi,
@@ -952,6 +952,7 @@ async function testExactOutputMultihop(){
  * 2. 根据sqrtPriceX96 计算当前资产的价格
  */
 async function testSqrtPrice(){
+    console.log("\n------------------------testSqrtPrice--------------------------------------------------------")
     const tokenIn:Token = WETH_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
     const inputAmount = 0.02;
@@ -993,14 +994,18 @@ async function testSqrtPrice(){
 
     console.log("pool address:",poolConstants.poolAddress);
     console.log("pool liquidity:",poolConstants.liquidity);
-    console.log("pool slot0:",poolConstants.slot0);
+    // console.log("pool slot0:",poolConstants.slot0);
+    console.log("------------------------testSqrtPrice--------------------------------------------------------\n")
 
 
 
 }
 
-
-async function calculatePoolPriceDiff(){
+/**
+ * 计算同一个交易对不同手续费池子之间的价差，报价合约用的是UniswapV3 quote1
+ */
+async function calculatePoolPriceDiffByQuote1(){
+    console.log("\n-----------------------------calculatePoolPriceDiffByQuote1-----------------------------------------")
     const tokenIn:Token = WETH_TOKEN;
     const tokenMiddle:Token = UNI_TOKEN;
     const tokenOut:Token = USDC_TOKEN;
@@ -1024,13 +1029,13 @@ async function calculatePoolPriceDiff(){
 
     poolFee = FeeAmount.MEDIUM;
     let outputAmount2 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
-    let feeMedium = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
-    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)} fee:${feeMedium}`);
+    let feeMedium = Number(ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)} fee:${feeMedium}`);
 
     poolFee = FeeAmount.LOW;
     let outputAmount3 = await quote1ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
-    let feeLow = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
-    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)} fee:${feeLow}`);
+    let feeLow = Number(ethers.formatUnits(outputAmount3.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount3.toString(),tokenOut.decimals)} fee:${feeLow}`);
 
     const diff1HighAndMedium = ethers.formatUnits(outputAmount2 - outputAmount1,tokenOut.decimals);
     const diffMediumAndLow = ethers.formatUnits(outputAmount3 - outputAmount2,tokenOut.decimals);
@@ -1038,9 +1043,92 @@ async function calculatePoolPriceDiff(){
 
 
 
-    console.log(`10000 Pool and  3000 Pool diff1HighAndMedium:${diff1HighAndMedium} feeSum:${feeHigh +feeMedium}`);
-    console.log(`3000 Pool fee and 500 Pool diffMediumAndLow:${diffMediumAndLow} feeSum:${feeMedium+feeLow}`);
-    console.log(`10000 Pool and 500 Pool diffHighAndLow:${diffHighAndLow} feeSum:${feeHigh+feeLow}`);
+    console.log(`\nHigh Pool and  Medium Pool diff:${diff1HighAndMedium} feeSum:${feeHigh +feeMedium}`);
+    console.log(`Medium Pool and Low Pool diff:${diffMediumAndLow} feeSum:${feeMedium+feeLow}`);
+    console.log(`High Pool and Low Pool diff:${diffHighAndLow} feeSum:${feeHigh+feeLow}`);
+
+
+
+
+
+
+}
+/**
+ * 计算同一个交易对不同手续费池子之间的价差，报价合约用的是UniswapV3 quote2
+ */
+async function calculatePoolPriceDiffByQuote2(){
+    console.log("\n-----------------------------calculatePoolPriceDiffByQuote2-----------------------------------------")
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenMiddle:Token = UNI_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    // const tokenMiddle:Token = APE_TOKEN;
+    // const tokenMiddle:Token = DAI_TOKEN;
+    // const tokenOut:Token = APE_TOKEN;
+    const amountIn:number = 1;
+    const amountOut:number = 100;
+    let poolFee:number = FeeAmount.MEDIUM;
+
+
+    console.log("Target symbol: ",tokenOut.symbol);
+    console.log(`Input  symbol: ${tokenIn.symbol}`);
+    console.log(`Output symbol: ${tokenOut.symbol}`);
+    console.log(`Input  amount: ${amountIn}`);
+
+    poolFee = FeeAmount.HIGH;
+    let output1 = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let outputAmount1 = output1.amountOut;
+    let gasFeeData = (await provider.getFeeData());
+    let highPoolGasDollar;    // 消耗的gas,产生的总费用 单位美元
+    if(gasFeeData.gasPrice != null){
+        let totalGas = ethers.formatUnits(output1.gasEstimate * gasFeeData.gasPrice,18);
+        // let highPoolGasDollar = Number(highPoolTotalGas) * Number(output1.amountOut);
+        highPoolGasDollar = Number(totalGas) * Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals));
+
+    }
+    let feeHigh = Number(ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount1.toString(),tokenOut.decimals)} fee:${feeHigh} gasEstimate:${output1.gasEstimate} gasFee dollar:${highPoolGasDollar}`);
+
+
+
+    poolFee = FeeAmount.MEDIUM;
+    let output2 = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let outputAmount2 = output2.amountOut;
+    gasFeeData = (await provider.getFeeData());
+    let mediumPoolGasDollar;    // 消耗的gas,产生的总费用 单位美元
+    if(gasFeeData.gasPrice != null){
+        let totalGas = ethers.formatUnits(output1.gasEstimate * gasFeeData.gasPrice,18);
+        // let highPoolGasDollar = Number(highPoolTotalGas) * Number(output1.amountOut);
+        mediumPoolGasDollar = Number(totalGas) * Number(ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals));
+
+    }
+    let feeMedium = Number(ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount2.toString(),tokenOut.decimals)} fee:${feeMedium} gasEstimate:${output2.gasEstimate} gasFee dollar:${mediumPoolGasDollar}`);
+
+
+
+    poolFee = FeeAmount.LOW;
+    let output3 = await quote2ExactInputSingle(tokenIn,tokenOut,amountIn,poolFee);
+    let outputAmount3 = output3.amountOut;
+    let lowPoolGasDollar;    // 消耗的gas,产生的总费用 单位美元
+    gasFeeData = (await provider.getFeeData());
+    if(gasFeeData.gasPrice != null){
+        let totalGas = ethers.formatUnits(output1.gasEstimate * gasFeeData.gasPrice,18);
+        // let highPoolGasDollar = Number(highPoolTotalGas) * Number(output1.amountOut);
+        lowPoolGasDollar = Number(totalGas) * Number(ethers.formatUnits(outputAmount3.toString(),tokenOut.decimals));
+
+    }
+    let feeLow = Number(ethers.formatUnits(outputAmount3.toString(),tokenOut.decimals)) * poolFee / 1000000;
+    console.log(`input:${tokenIn.symbol} outpout:${tokenOut.symbol} poolFee:${poolFee} outputAmount:${ethers.formatUnits(outputAmount3.toString(),tokenOut.decimals)} fee:${feeLow} gasEstimate:${output3.gasEstimate} gasFee dollar:${lowPoolGasDollar}`);
+
+    const diffHighAndMedium = ethers.formatUnits(outputAmount2 - outputAmount1,tokenOut.decimals);
+    const diffMediumAndLow = ethers.formatUnits(outputAmount3 - outputAmount2,tokenOut.decimals);
+    const diffHighAndLow = ethers.formatUnits(outputAmount3 - outputAmount1,tokenOut.decimals);
+
+
+
+    console.log(`\nHigh Pool and  Medium Pool diff:${diffHighAndMedium} feeSum:${feeHigh +feeMedium}`);
+    console.log(`Medium Pool and Low Pool diff:${diffMediumAndLow} feeSum:${feeMedium+feeLow}`);
+    console.log(`High Pool and Low Pool diff:${diffHighAndLow} feeSum:${feeHigh+feeLow}`);
 
 
 
@@ -1051,10 +1139,11 @@ async function calculatePoolPriceDiff(){
 
 
 
+
 async function main(){
 
 
-    // await ethToWETH();
+    await ethToWETH();
     
     // await testWeb3();
 
@@ -1077,7 +1166,9 @@ async function main(){
 
     // await testSqrtPrice();
 
-    await calculatePoolPriceDiff();
+    // await calculatePoolPriceDiffByQuote1();
+    await calculatePoolPriceDiffByQuote2();
+
 
 
 }
