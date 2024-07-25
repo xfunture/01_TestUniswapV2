@@ -108,160 +108,434 @@ describe("UniswapV3 swap",function(){
 
     describe("\nTransaction",function(){
 
-        it("swapExactETHForTokens",async function(){
-            const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
-            const inputAmount = 1;
-            const tradeAmount = 0.2;
-            const outputAmount = 0.2;
-            const tokenIn:Token = WETH_TOKEN;
-            const tokenMiddle:Token = USDC_TOKEN;
-            const tokenOut:Token = DAI_TOKEN;
-            const poolFee = 3000;
-            const contractCddress = await uniswapv3Swap.getAddress()
-            const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+        // it("swapExactETHForTokens eth to dai",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     const inputAmount = 1;
+        //     const tradeAmount = 0.2;
+        //     const outputAmount = 0.2;
+        //     const tokenIn:Token = WETH_TOKEN;
+        //     const tokenMiddle:Token = USDC_TOKEN;
+        //     const tokenOut:Token = DAI_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
 
 
-            //---------------------------wrapEther-------------------------------------
-            let contractwethBalance = await wethContract.balanceOf(contractCddress);
-            let contractethBalance = await provider.getBalance(contractCddress);
-            // console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
-            // console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
 
 
-            await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
             
-            contractwethBalance = await wethContract.balanceOf(contractCddress);
-            contractethBalance = await provider.getBalance(contractCddress);
-            // console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
-            // console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
-            expect(contractwethBalance).to.equal(amountIn);
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn);
 
-            //----------------------------send eth to contract-----------------------------
-            const tx = {
-                to:contractCddress,
-                value:ethers.parseEther(inputAmount.toString())
-            }
-            const transaction = await wallet.sendTransaction(tx);
-            const receipt = await transaction.wait();
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log("\tafter send eth to contarct which eth balance:",ethers.formatEther(contractethBalance));
+        //     //----------------------------send eth to contract-----------------------------
+        //     const tx = {
+        //         to:contractCddress,
+        //         value:ethers.parseEther(inputAmount.toString())
+        //     }
+        //     const transaction = await wallet.sendTransaction(tx);
+        //     const receipt = await transaction.wait();
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log("\tafter send eth to contarct which eth balance:",ethers.formatEther(contractethBalance));
 
 
-            const buy_path = [tokenIn.address,tokenOut.address]
-            const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             
-            const amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
-            const tokenOutAmount = amountsOut[1];
-            console.log("\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            const to = contractCddress;
-            // const to = wallet.address;
+        //     const amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     const amountOutMin = amountsOut[1];
+        //     console.log("\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(amountOutMin,tokenOut.decimals));
+        //     const to = contractCddress;
+        //     // const to = wallet.address;
 
-            const deadline = createDeadLine();
+        //     const deadline = createDeadLine();
             
-            let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
 
 
-            const output = await uniswapv3Swap.swapExactETHForTokens(
-                                        ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
-                                        tokenOutAmount,
-                                        buy_path,
-                                        to,
-                                        deadline,
-                                        // {value:amountIn}
-                                         )
+        //     const output = await uniswapv3Swap.swapExactETHForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 amountOutMin,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
 
 
 
-            contractwethBalance = await wethContract.balanceOf(contractCddress);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
 
-        })
+        // })
 
-
-        it("swapExactTokensForTokens WETH TO DAI",async function(){
-            const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
-            const inputAmount = 1;
-            const tradeAmount = 0.02;
-            const outputAmount = 0.2;
-            const tokenIn:Token = WETH_TOKEN;
-            const tokenMiddle:Token = USDC_TOKEN;
-            const tokenOut:Token = DAI_TOKEN;
-            const poolFee = 3000;
-            const contractCddress = await uniswapv3Swap.getAddress()
-            const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
-
+        // it("swapExactETHForTokensSupportingFeeOnTransferTokens eth to dai",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     const inputAmount = 1;
+        //     const tradeAmount = 0.2;
+        //     const outputAmount = 0.2;
+        //     const tokenIn:Token = WETH_TOKEN;
+        //     const tokenMiddle:Token = USDC_TOKEN;
+        //     const tokenOut:Token = DAI_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
 
-            //---------------------------wrapEther-------------------------------------
-            let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
-            let contractethBalance = await provider.getBalance(contractCddress);
-            let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
-            console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
-            console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
 
 
-            await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
             
-            let contractwethBalance = await wethContract.balanceOf(contractCddress);
-            let owerwethBalance = await wethContract.balanceOf(wallet.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
-            console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
-            expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn);
+
+        //     //----------------------------send eth to contract-----------------------------
+        //     const tx = {
+        //         to:contractCddress,
+        //         value:ethers.parseEther(inputAmount.toString())
+        //     }
+        //     const transaction = await wallet.sendTransaction(tx);
+        //     const receipt = await transaction.wait();
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log("\tafter send eth to contarct which eth balance:",ethers.formatEther(contractethBalance));
 
 
-            const buy_path = [tokenIn.address,tokenOut.address]
-            const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             
-            const amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
-            const tokenOutAmount = amountsOut[1];
-            console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            // const to = contractCddress;
-            const to = wallet.address;
+        //     const amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     const amountOutMin = amountsOut[1];
+        //     console.log("\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(amountOutMin,tokenOut.decimals));
+        //     const to = contractCddress;
+        //     // const to = wallet.address;
 
-            const deadline = createDeadLine();
+        //     const deadline = createDeadLine();
             
-            let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactETHForTokensSupportingFeeOnTransferTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokensSupportingFeeOnTransferTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
 
 
-            const output = await uniswapv3Swap.swapExactTokensForTokens(
-                                        ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
-                                        tokenOutAmount,
-                                        buy_path,
-                                        to,
-                                        deadline,
-                                         )
+        //     const output = await uniswapv3Swap.swapExactETHForTokensSupportingFeeOnTransferTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 amountOutMin,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
 
 
 
-            contractwethBalance = await wethContract.balanceOf(contractCddress);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactETHForTokensSupportingFeeOnTransferTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactETHForTokensSupportingFeeOnTransferTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactETHForTokensSupportingFeeOnTransferTokens contract eth balance:",ethers.formatEther(contractethBalance));
 
-        })
+        // })
+
+        // it("swapETHForExactTokens eth to usdc",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     const inputAmount = 1;
+        //     const tradeAmount = 0.2;
+        //     const outputAmount = 500;
+        //     const tokenIn:Token = WETH_TOKEN;
+        //     const tokenMiddle:Token = USDC_TOKEN;
+        //     const tokenOut:Token = DAI_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
 
-        it("swapExactTokensForTokensV1 USDC to WETH",async function(){
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+            
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     // console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     // console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn);
+
+        //     //----------------------------send eth to contract-----------------------------
+        //     const tx = {
+        //         to:contractCddress,
+        //         value:ethers.parseEther(inputAmount.toString())
+        //     }
+        //     const transaction = await wallet.sendTransaction(tx);
+        //     const receipt = await transaction.wait();
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log("\tafter send eth to contarct which eth balance:",ethers.formatEther(contractethBalance));
+
+
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+            
+        //     const amountsIn = await UNISWAP_ROUTER_CONTRACT.getAmountsIn(amount_to_buy_for,buy_path);
+        //     const tokenInAmount = amountsIn[1];
+        //     console.log("\tgetAmountsIn tokenInAmount:",ethers.formatUnits(tokenInAmount,tokenOut.decimals));
+        //     const to = contractCddress;
+        //     // const to = wallet.address;
+
+        //     const deadline = createDeadLine();
+            
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+
+
+
+        //     const output = await uniswapv3Swap.swapETHForExactTokens(
+        //                                 tokenInAmount,
+        //                                 amountOut,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
+
+
+
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+
+        // })
+
+
+        // it("swapExactTokensForTokens WETH TO DAI",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     const inputAmount = 1;
+        //     const tradeAmount = 0.02;
+        //     const outputAmount = 0.2;
+        //     const tokenIn:Token = WETH_TOKEN;
+        //     const tokenMiddle:Token = USDC_TOKEN;
+        //     const tokenOut:Token = DAI_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     const amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     const amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+
+
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
+        //     console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
+        //     console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+            
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let owerwethBalance = await wethContract.balanceOf(wallet.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+
+
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+            
+        //     const amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     const tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     // const to = contractCddress;
+        //     const to = wallet.address;
+
+        //     const deadline = createDeadLine();
+            
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+
+
+
+        //     const output = await uniswapv3Swap.swapExactTokensForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 tokenOutAmount,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
+
+
+
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+
+        // })
+
+
+        // it("swapExactTokensForTokensV1 USDC to WETH",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     let inputAmount = 1;
+        //     let tradeAmount = 0.2;
+        //     let outputAmount = 0.2;
+        //     let tokenIn:Token = WETH_TOKEN;
+        //     let tokenMiddle:Token = DAI_TOKEN;
+        //     let tokenOut:Token = USDC_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+
+
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
+        //     console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
+        //     console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+            
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let owerwethBalance = await wethContract.balanceOf(wallet.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+
+
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+            
+        //     let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     let tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     // const to = contractCddress;
+        //     let to = wallet.address;
+
+        //     const deadline = createDeadLine();
+            
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+
+
+        //     /**************************************WETH TO USDC ***********************************************************/
+        //     const output = await uniswapv3Swap.swapExactTokensForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 tokenOutAmount,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
+
+
+
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+
+        //     /**************************************WETH TO USDC ***********************************************************/
+
+
+        //     /***************************************USDC TO WETH **********************************************************/
+        //     inputAmount = 1;
+        //     tradeAmount = 200;
+        //     outputAmount = 0.2;
+        //     tokenIn = USDC_TOKEN;
+        //     const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
+        //     tokenMiddle = DAI_TOKEN;
+        //     tokenOut = WETH_TOKEN;
+        //     amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+        //     const sell_path = [tokenIn.address,tokenOut.address];
+
+        //     const amount_to_sell_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
+        //     tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     to = wallet.address;
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactTokensForTokensV1 contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForTokensV1 owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+
+
+
+        //     // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
+        //     await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
+
+        //     const output1 = await uniswapv3Swap.swapExactTokensForTokensV1(
+        //         ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //         tokenOutAmount,
+        //         sell_path,
+        //         to,
+        //         deadline,
+        //          )
+
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tafter swapExactTokensForTokensV1 contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForTokensV1 owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+            
+        //     /***************************************USDC TO WETH **********************************************************/
+
+        // })
+
+
+        it("swapExactTokensForTokensSupportingFeeOnTransferTokens USDC to WETH",async function(){
             const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
             let inputAmount = 1;
             let tradeAmount = 0.2;
@@ -352,15 +626,15 @@ describe("UniswapV3 swap",function(){
             to = wallet.address;
             tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tbefore swapExactTokensForTokensV1 contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForTokensV1 owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+            console.log(`\n\tbefore swapExactTokensForTokensSupportingFeeOnTransferTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tbefore swapExactTokensForTokensSupportingFeeOnTransferTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
 
 
             // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
             await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
 
-            const output1 = await uniswapv3Swap.swapExactTokensForTokensV1(
+            const output1 = await uniswapv3Swap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
                 tokenOutAmount,
                 sell_path,
@@ -370,269 +644,393 @@ describe("UniswapV3 swap",function(){
 
             tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
             tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tafter swapExactTokensForTokensV1 contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForTokensV1 owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+            console.log(`\n\tafter swapExactTokensForTokensSupportingFeeOnTransferTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+            console.log(`\tafter swapExactTokensForTokensSupportingFeeOnTransferTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             
             /***************************************USDC TO WETH **********************************************************/
 
         })
 
 
-        it("swapExactTokensForETH USDC to ETH",async function(){
-            const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
-            let inputAmount = 1;
-            let tradeAmount = 0.2;
-            let outputAmount = 0.2;
-            let tokenIn:Token = WETH_TOKEN;
-            let tokenMiddle:Token = DAI_TOKEN;
-            let tokenOut:Token = USDC_TOKEN;
-            const poolFee = 3000;
-            const contractCddress = await uniswapv3Swap.getAddress()
-            let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+        // it("swapExactTokensForETH USDC to ETH",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     let inputAmount = 1;
+        //     let tradeAmount = 0.4;
+        //     let outputAmount = 0.2;
+        //     let tokenIn:Token = WETH_TOKEN;
+        //     let tokenMiddle:Token = DAI_TOKEN;
+        //     let tokenOut:Token = USDC_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
 
 
-            //---------------------------wrapEther-------------------------------------
-            let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
-            let contractethBalance = await provider.getBalance(contractCddress);
-            let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
-            console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
-            console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
+        //     console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
+        //     console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
 
 
-            await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
             
-            let contractwethBalance = await wethContract.balanceOf(contractCddress);
-            let owerwethBalance = await wethContract.balanceOf(wallet.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
-            console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
-            expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let owerwethBalance = await wethContract.balanceOf(wallet.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
 
 
-            const buy_path = [tokenIn.address,tokenOut.address]
-            const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             
-            let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
-            let tokenOutAmount = amountsOut[1];
-            console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            // const to = contractCddress;
-            let to = wallet.address;
+        //     let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     let tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     // const to = contractCddress;
+        //     let to = wallet.address;
 
-            const deadline = createDeadLine();
+        //     const deadline = createDeadLine();
             
-            let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            console.log(`\n\tbefore swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
 
-            /**************************************WETH TO USDC ***********************************************************/
-            const output = await uniswapv3Swap.swapExactTokensForTokens(
-                                        ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
-                                        tokenOutAmount,
-                                        buy_path,
-                                        to,
-                                        deadline,
-                                         )
+        //     /**************************************WETH TO USDC ***********************************************************/
+        //     const output = await uniswapv3Swap.swapExactTokensForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 tokenOutAmount,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
 
 
 
-            contractwethBalance = await wethContract.balanceOf(contractCddress);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapExactTokensForTokens contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log("\tafter swapExactTokensForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
-            /**************************************WETH TO USDC ***********************************************************/
+        //     /**************************************WETH TO USDC ***********************************************************/
 
 
-            /***************************************USDC TO ETH **********************************************************/
-            inputAmount = 1;
-            tradeAmount = 500;
-            outputAmount = 0.2;
-            tokenIn = USDC_TOKEN;
-            const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
-            tokenMiddle = DAI_TOKEN;
-            tokenOut = WETH_TOKEN;
-            amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
-            const sell_path = [tokenIn.address,tokenOut.address];
+        //     /***************************************USDC TO ETH **********************************************************/
+        //     inputAmount = 1;
+        //     tradeAmount = 1000;
+        //     tokenIn = USDC_TOKEN;
+        //     const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
+        //     tokenOut = WETH_TOKEN;
+        //     const sell_path = [tokenIn.address,tokenOut.address];
+        //     amountIn = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             
 
-            const amount_to_sell_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
-            amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
-            tokenOutAmount = amountsOut[1];
-            console.log("\tamountsOut:",amountsOut);
-            console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            to = wallet.address;
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            let ethContractBalance = await provider.getBalance(contractCddress);
-            let ethOwnerBalance = await provider.getBalance(wallet.address);
-            console.log(`\n\tbefore swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     const amount_to_sell_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
+        //     tokenOutAmount = amountsOut[1];
+        //     console.log("\tamountsOut:",amountsOut);
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     to = contractCddress;
 
-            // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
-            await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
+        //     let tokenInContractBalance = await getERC20Balance(contractCddress,tokenIn.address);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     let ethContractBalance = await provider.getBalance(contractCddress);
+        //     let ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tbefore swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH contract  ${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInContractBalance,tokenIn.decimals)}`);
 
-            const output1 = await uniswapv3Swap.swapExactTokensForETH(
-                ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
-                tokenOutAmount,
-                sell_path,
-                to,
-                deadline,
-                 )
+        //     // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
+        //     await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
 
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            ethContractBalance = await provider.getBalance(contractCddress);
-            ethOwnerBalance = await provider.getBalance(wallet.address);
-            console.log(`\n\tafter swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     const output1 = await uniswapv3Swap.swapExactTokensForETH(
+        //         amountIn,
+        //         tokenOutAmount,
+        //         sell_path,
+        //         to,
+        //         deadline,
+        //          )
 
-
-
-            /***************************************USDC TO ETH **********************************************************/
-
-        })
-
-        it("swapTokensForExactETH USDC to WETH",async function(){
-            const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
-            let inputAmount = 1;
-            let tradeAmount = 0.2;
-            let outputAmount = 0.2;
-            let tokenIn:Token = WETH_TOKEN;
-            let tokenMiddle:Token = DAI_TOKEN;
-            let tokenOut:Token = USDC_TOKEN;
-            const poolFee = 3000;
-            const contractCddress = await uniswapv3Swap.getAddress()
-            let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
+        //     tokenInContractBalance = await getERC20Balance(contractCddress,tokenIn.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     ethContractBalance = await provider.getBalance(contractCddress);
+        //     ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tafter swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForETH contract  ${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInContractBalance,tokenIn.decimals)}`);
 
 
 
-            //---------------------------wrapEther-------------------------------------
-            let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
-            let contractethBalance = await provider.getBalance(contractCddress);
-            let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
-            console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
-            console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     /***************************************USDC TO ETH **********************************************************/
+
+        // })
+
+        // it("swapExactTokensForETHSupportingFeeOnTransferTokens USDC to ETH",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     let inputAmount = 1;
+        //     let tradeAmount = 0.4;
+        //     let outputAmount = 0.2;
+        //     let tokenIn:Token = WETH_TOKEN;
+        //     let tokenMiddle:Token = DAI_TOKEN;
+        //     let tokenOut:Token = USDC_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
 
-            await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
+        //     console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
+        //     console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
             
-            let contractwethBalance = await wethContract.balanceOf(contractCddress);
-            let owerwethBalance = await wethContract.balanceOf(wallet.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
-            console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
-            expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let owerwethBalance = await wethContract.balanceOf(wallet.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
 
 
-            const buy_path = [tokenIn.address,tokenOut.address]
-            const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             
-            let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
-            let tokenOutAmount = amountsOut[1];
-            console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
-            // const to = contractCddress;
-            let to = wallet.address;
+        //     let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     let tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     // const to = contractCddress;
+        //     let to = wallet.address;
 
-            const deadline = createDeadLine();
+        //     const deadline = createDeadLine();
             
-            let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            let ethOwnerBalance = await provider.getBalance(wallet.address);
-            console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log("\tbefore swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
-            console.log(`\tbefore swapExactETHForTokens owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenIn.decimals)}`);
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     console.log(`\n\tbefore swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
 
-            /**************************************WETH TO USDC ***********************************************************/
-            const output = await uniswapv3Swap.swapExactTokensForTokens(
-                                        ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
-                                        tokenOutAmount,
-                                        buy_path,
-                                        to,
-                                        deadline,
-                                         )
+        //     /**************************************WETH TO USDC ***********************************************************/
+        //     const output = await uniswapv3Swap.swapExactTokensForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 tokenOutAmount,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
 
 
 
-            contractwethBalance = await wethContract.balanceOf(contractCddress);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            contractethBalance = await provider.getBalance(contractCddress);
-            ethOwnerBalance = await provider.getBalance(wallet.address);
-            console.log(`\n\tafter swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapExactETHForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log("\tafter swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
-            console.log(`\tafter swapExactETHForTokens owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenIn.decimals)}`);
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
 
-            /**************************************WETH TO USDC ***********************************************************/
+        //     /**************************************WETH TO USDC ***********************************************************/
 
 
-            /***************************************USDC TO WETH **********************************************************/
-            inputAmount = 1;
-            tradeAmount = 0.2;
-            tokenIn = USDC_TOKEN;
-            const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
-            tokenMiddle = DAI_TOKEN;
-            tokenOut = WETH_TOKEN;
-            amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
-            amountOut = ethers.parseUnits(tradeAmount.toString(),tokenOut.decimals);
-            const sell_path = [tokenIn.address,tokenOut.address];
+        //     /***************************************USDC TO ETH **********************************************************/
+        //     inputAmount = 1;
+        //     tradeAmount = 1000;
+        //     tokenIn = USDC_TOKEN;
+        //     const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
+        //     tokenOut = WETH_TOKEN;
+        //     const sell_path = [tokenIn.address,tokenOut.address];
+        //     amountIn = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+            
 
-            // amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
-            const amountsIn = await UNISWAP_ROUTER_CONTRACT.getAmountsIn(amountOut,sell_path);
-            console.log("\tamountsIn:",amountsIn);
-            const amountInMax = amountsIn[0];
-            console.log("\n\tamountInMax:",ethers.formatUnits(amountInMax,tokenIn.decimals));
-            to = wallet.address;
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            ethOwnerBalance = await provider.getBalance(wallet.address);
-            let ethContractBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tbefore swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     const amount_to_sell_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+        //     amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
+        //     tokenOutAmount = amountsOut[1];
+        //     console.log("\tamountsOut:",amountsOut);
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     to = contractCddress;
+
+        //     let tokenInContractBalance = await getERC20Balance(contractCddress,tokenIn.address);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     let ethContractBalance = await provider.getBalance(contractCddress);
+        //     let ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tbefore swapExactTokensForETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactTokensForETH contract  ${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInContractBalance,tokenIn.decimals)}`);
+
+        //     // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
+        //     await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,tradeAmount);
+
+        //     const output1 = await uniswapv3Swap.swapExactTokensForETHSupportingFeeOnTransferTokens(
+        //         amountIn,
+        //         tokenOutAmount,
+        //         sell_path,
+        //         to,
+        //         deadline,
+        //          )
+
+        //     tokenInContractBalance = await getERC20Balance(contractCddress,tokenIn.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     ethContractBalance = await provider.getBalance(contractCddress);
+        //     ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tafter swapExactTokensForETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForETH contract  ${tokenIn.symbol} balance: ${ethers.formatUnits(tokenInContractBalance,tokenIn.decimals)}`);
 
 
 
-            // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
-            await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,Number(ethers.formatUnits(amountInMax,tokenIn.decimals)));
+        //     /***************************************USDC TO ETH **********************************************************/
 
-            const output1 = await uniswapv3Swap.swapTokensForExactETH(
-                amountOut,
-                amountInMax,
-                sell_path,
-                to,
-                deadline,
-                 )
+        // })
 
-            tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
-            tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
-            ethOwnerBalance = await provider.getBalance(wallet.address);
-            ethContractBalance = await provider.getBalance(contractCddress);
-            console.log(`\n\tafter swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
-            console.log(`\tafter swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
-            console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+        // it("swapTokensForExactETH USDC to WETH",async function(){
+        //     const {uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapV3SingleHopSwapFixture)
+        //     let inputAmount = 1;
+        //     let tradeAmount = 0.4;
+        //     let outputAmount = 0.2;
+        //     let tokenIn:Token = WETH_TOKEN;
+        //     let tokenMiddle:Token = DAI_TOKEN;
+        //     let tokenOut:Token = USDC_TOKEN;
+        //     const poolFee = 3000;
+        //     const contractCddress = await uniswapv3Swap.getAddress()
+        //     let amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     let amountOut = ethers.parseUnits(outputAmount.toString(),tokenOut.decimals);
 
-            /***************************************USDC TO WETH **********************************************************/
 
-        })
+
+        //     //---------------------------wrapEther-------------------------------------
+        //     let contractwethBalanceBefore = await wethContract.balanceOf(contractCddress);
+        //     let contractethBalance = await provider.getBalance(contractCddress);
+        //     let owerwethBalanceBefore = await wethContract.balanceOf(wallet.address);
+        //     console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalanceBefore)}`);
+        //     console.log(`\tbefore wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+
+
+        //     await uniswapv3Swap.wrapEtherToContract({value:amountIn});
+            
+        //     let contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     let owerwethBalance = await wethContract.balanceOf(wallet.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\tafter wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
+        //     console.log(`\tafter wrapEther contract ethBalance: ${ethers.formatEther(contractethBalance)}`);
+        //     expect(contractwethBalance).to.equal(amountIn +contractwethBalanceBefore);
+
+
+        //     const buy_path = [tokenIn.address,tokenOut.address]
+        //     const amount_to_buy_for = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
+            
+        //     let amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_buy_for,buy_path);
+        //     let tokenOutAmount = amountsOut[1];
+        //     console.log("\n\tgetAmountsOut tokenOutAmount:",ethers.formatUnits(tokenOutAmount,tokenOut.decimals));
+        //     // const to = contractCddress;
+        //     let to = wallet.address;
+
+        //     const deadline = createDeadLine();
+            
+        //     let tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     let tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     let ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tbefore swapExactETHForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapExactETHForTokens owner  tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tbefore swapExactETHForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+        //     console.log(`\tbefore swapExactETHForTokens owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenIn.decimals)}`);
+
+
+        //     /**************************************WETH TO USDC ***********************************************************/
+        //     const output = await uniswapv3Swap.swapExactTokensForTokens(
+        //                                 ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals),
+        //                                 tokenOutAmount,
+        //                                 buy_path,
+        //                                 to,
+        //                                 deadline,
+        //                                  )
+
+
+
+        //     contractwethBalance = await wethContract.balanceOf(contractCddress);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address);
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     contractethBalance = await provider.getBalance(contractCddress);
+        //     ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     console.log(`\n\tafter swapExactTokensForTokens contract tokenOut balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapExactTokensForTokens owner tokenOut balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log("\tafter swapExactTokensForTokens contract eth balance:",ethers.formatEther(contractethBalance));
+        //     console.log(`\tafter swapExactTokensForTokens owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenIn.decimals)}`);
+
+        //     /**************************************WETH TO USDC ***********************************************************/
+
+
+        //     /***************************************USDC TO WETH **********************************************************/
+        //     inputAmount = 1;
+        //     tradeAmount = 0.2;
+        //     tokenIn = USDC_TOKEN;
+        //     const tokenInContract = new ethers.Contract(tokenIn.address,ERC20_ABI,wallet);
+        //     tokenMiddle = DAI_TOKEN;
+        //     tokenOut = WETH_TOKEN;
+        //     amountIn = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
+        //     amountOut = ethers.parseUnits(tradeAmount.toString(),tokenOut.decimals);
+        //     const sell_path = [tokenIn.address,tokenOut.address];
+
+        //     // amountsOut = await UNISWAP_ROUTER_CONTRACT.getAmountsOut(amount_to_sell_for,sell_path);
+        //     const amountsIn = await UNISWAP_ROUTER_CONTRACT.getAmountsIn(amountOut,sell_path);
+        //     console.log("\tamountsIn:",amountsIn);
+        //     const amountInMax = amountsIn[0];
+        //     console.log("\n\tamountInMax:",ethers.formatUnits(amountInMax,tokenIn.decimals));
+        //     to = contractCddress;
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     let ethContractBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tbefore swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+
+
+
+        //     // 需要先将tokenIn 授权给自己部署的合约，然后在合约中将代币tokenIn 转给自己，最后再将tokenIn授权给router 合约才能进行交易
+        //     await getTokenTransferApproval(tokenInContract,contractCddress,tokenIn,Number(ethers.formatUnits(amountInMax,tokenIn.decimals)));
+
+        //     const output1 = await uniswapv3Swap.swapTokensForExactETH(
+        //         amountOut,
+        //         amountInMax,
+        //         sell_path,
+        //         to,
+        //         deadline,
+        //          )
+
+        //     tokenOutBalance = await getERC20Balance(wallet.address,tokenOut.address)
+        //     tokenOutContractBalance = await getERC20Balance(contractCddress,tokenOut.address);
+        //     ethOwnerBalance = await provider.getBalance(wallet.address);
+        //     ethContractBalance = await provider.getBalance(contractCddress);
+        //     console.log(`\n\tafter swapTokensForExactETH contract weth balance: ${ethers.formatUnits(tokenOutContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tafter swapTokensForExactETH owner  weth balance: ${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapTokensForExactETH contract  eth balance: ${ethers.formatUnits(ethContractBalance,tokenOut.decimals)}`);
+        //     console.log(`\tbefore swapTokensForExactETH owner  eth balance: ${ethers.formatUnits(ethOwnerBalance,tokenOut.decimals)}`);
+
+        //     /***************************************USDC TO WETH **********************************************************/
+
+        // })
 
         
 

@@ -88,4 +88,5 @@ npx hardhat run ./scripts/uniswapv3_ethersv6/testUniswapV3SingleHopSwap.ts
 ```
 npx hardhat test ./test/UniswapV3SingleHopSwap.ts 
 npx hardhat test ./test/UniswapV3MultiHopSwap.ts 
+npx hardhat test ./test/UniswapV2SingleHopSwap.ts
 ```

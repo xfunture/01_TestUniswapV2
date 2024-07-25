@@ -423,7 +423,55 @@ contract UniswapV3SingleHopSwap{
      * @param to   输出代币接收地址
      * @param deadline 截止时间
      */
-    function swapExactETHForTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+    function swapExactETHForTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
+
+        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        weth.approve(address(uniswapv2Router),amountIn);
+        console.log("amountIn %s",amountIn);
+        console.log("amountOutMin %s",amountOutMin);
+        console.log("path0 %s",path[0]);
+        console.log("path1 %s",path[1]);
+
+        amounts = uniswapv2Router.swapExactETHForTokens{value:amountIn}(amountOutMin, path, to, deadline);
+
+    }
+
+    /* uniswapv2
+     * 指定ETH数量兑换输出代币
+     * 该函数在调用之前需要确保合约本身拥有ETH，而不是WETH
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external {
+
+        // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256 balanceContract = weth.balanceOf(address(this));
+        console.log("Contract:%s contract weth balance:%s",address(this),balanceContract);
+        weth.approve(address(uniswapv2Router),amountIn);
+        console.log("amountIn %s",amountIn);
+        console.log("amountOutMin %s",amountOutMin);
+        console.log("path0 %s",path[0]);
+        console.log("path1 %s",path[1]);
+
+        uniswapv2Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value:amountIn}(amountOutMin,path,to,deadline);
+
+    }
+
+    /* uniswapv2
+     * ETH 兑换指定数量的输出代币
+     * 该函数在调用之前需要确保合约本身拥有ETH，而不是WETH
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapETHForExactTokens(uint256 amountIn,uint256 amountOut, address[] calldata path, address to, uint deadline) external returns(uint[] memory amounts){
 
         // uniswapv2Router.getAmountOut(amountIn, reserveIn, reserveOut);
         uint256 balanceContract = weth.balanceOf(address(this));
@@ -478,8 +526,27 @@ contract UniswapV3SingleHopSwap{
 
     }
 
+    /*uniswapv2
+     * 指定输入代币的数量兑换输出代币
+     * 在输入代币之前需要确保合约本身拥有代币
+     * @param amountIn 输入代币数量
+     * @param amountOutMin 输出代币最小数量
+     * @param path 代币交换路径 [tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external{
 
-    /* uniswapv2 存在bug
+
+        IERC20 erc20 = IERC20(path[0]);
+        erc20.transferFrom(owner, address(this), amountIn);
+        erc20.approve(address(uniswapv2Router),amountIn);
+        uniswapv2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(amountIn, amountOutMin, path, to, deadline);
+
+    }
+
+
+    /* uniswapv2
      * 指定输入代币数量兑换输出代币ETH
      * 该函数在调用之前需要确保合约本身拥有输入token
      * @param amountIn 输入代币数量
@@ -493,9 +560,35 @@ contract UniswapV3SingleHopSwap{
         IERC20 erc20 = IERC20(path[0]);
         erc20.transferFrom(owner, address(this), amountIn);
         erc20.approve(address(uniswapv2Router),amountIn);
+        
+
         amounts = uniswapv2Router.swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
 
     }
+
+
+/* uniswapv2
+     * 指定输入代币数量兑换输出代币ETH
+     * 该函数在调用之前需要确保合约本身拥有输入token
+     * @param amountIn 输入代币数量
+     * @param amountOut 输出代币数量
+     * @param path 代币交换路径，[tokenIn,tokenOut]
+     * @param to   输出代币接收地址
+     * @param deadline 截止时间
+     */
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(uint256 amountIn,uint256 amountOutMin, address[] calldata path, address to, uint deadline) external {
+
+        IERC20 erc20 = IERC20(path[0]);
+        erc20.transferFrom(owner, address(this), amountIn);
+        erc20.approve(address(uniswapv2Router),amountIn);
+        
+
+        uniswapv2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(amountIn, amountOutMin, path, to, deadline);
+
+    }
+
+
+
 
     /* uniswapv2 
      * 输入代币兑换指定数量的输出代币,该函数当设置to为个人账户的时候可以接收到eth,当to设置为合约账户时，并没有收到eth
