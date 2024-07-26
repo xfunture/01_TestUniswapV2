@@ -4,12 +4,12 @@ import { toReadableAmount } from './lib/conversion';
 import { getPoolInfo } from './lib/pool';
 import { createTrade, getInTokenTransferApproval, getOutTokenTransferApproval, getTokenTransferApproval } from './lib/trading';
 import { getOutputQuote,TokenTrade} from './lib/trading';
-import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
+import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount, computePoolAddress } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
 import { createDeadLine, fromReadableAmount, priceFromSqrtPriceX96, priceFromTick } from './lib/utils';
 import { getNonceFromBlock, getNonceLocal, getProvider, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
 import * as fs from 'fs';
-import { DAI_TOKEN, ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
+import { DAI_TOKEN, ERC20_ABI, POOL_FACTORY_CONTRACT_ADDRESS, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
 import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
@@ -981,6 +981,7 @@ async function testSqrtPrice(){
     // const tokenInPrice = ((Number(sqrtPriceX96) / Q96) ** 2) / (10 ** tokenIn.decimals) * (10 ** tokenOut.decimals) ;
     const tokenInPrice = priceFromSqrtPriceX96(Number(sqrtPriceX96),tokenIn.decimals,tokenOut.decimals);
 
+    console.log("poolFee:",poolFee);
     console.log("sqrtPriceX96:",sqrtPriceX96);
     console.log("tick:",tick);
     console.log("tokenIn.decimals:",tokenIn.decimals);
@@ -1137,7 +1138,30 @@ async function calculatePoolPriceDiffByQuote2(){
 
 }
 
+/**
+ * 从slot0 中获取当前资产价格
+ * @param poolAddress 池子地址
+ * @param tokenIn 输入代币
+ * @param tokenOut 输出代币
+ */
 
+async function getPriceFromSlot0(poolAddress:string,tokenIn:Token,tokenOut:Token){
+    // console.log("currentPoolAddress:",poolAddress);
+    const poolContract = new ethers.Contract(
+        poolAddress,
+        IUniswapV3PoolABI.abi,
+        getProvider()
+    )
+
+    const slot0:Array<BigInt> = await poolContract.slot0();
+    let sqrtPriceX96 = slot0[0];
+    let tick = slot0[1]
+    let lowFeePriceFromSqrtPriceX96 = priceFromSqrtPriceX96(Number(sqrtPriceX96),tokenIn.decimals,tokenOut.decimals);
+    console.log("lowFeePriceFromSqrtPriceX96:",lowFeePriceFromSqrtPriceX96);
+    let lowFeePriceFromTick = priceFromTick(Number(tick),tokenIn.decimals,tokenOut.decimals);
+    console.log("lowFeePriceFromTick:",lowFeePriceFromTick);
+
+}
 
 
 async function main(){
@@ -1164,12 +1188,51 @@ async function main(){
 
     // await testExactOutputMultihop();
 
-    // await testSqrtPrice();
+    await testSqrtPrice();
 
     // await calculatePoolPriceDiffByQuote1();
-    await calculatePoolPriceDiffByQuote2();
+    // await calculatePoolPriceDiffByQuote2();
 
+    const tokenIn:Token = WETH_TOKEN;
+    const tokenOut:Token = USDC_TOKEN;
+    const poolFee = FeeAmount.HIGH;
 
+    const poolAddress1 = computePoolAddress(
+        {
+            factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
+            tokenA:tokenIn,
+            tokenB:tokenOut,
+            fee:FeeAmount.HIGH
+        }
+    )
+
+    const poolAddress2 = computePoolAddress(
+        {
+            factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
+            tokenA:tokenIn,
+            tokenB:tokenOut,
+            fee:FeeAmount.MEDIUM
+        }
+    )
+
+    const poolAddress3 = computePoolAddress(
+        {
+            factoryAddress:POOL_FACTORY_CONTRACT_ADDRESS,
+            tokenA:tokenIn,
+            tokenB:tokenOut,
+            fee:FeeAmount.LOW
+        }
+    )
+    console.log("poolAddress1:",poolAddress1);
+    getPriceFromSlot0(poolAddress1,tokenIn,tokenOut);
+    console.log("poolAddress2:",poolAddress2);
+    getPriceFromSlot0(poolAddress2,tokenIn,tokenOut);
+    console.log("poolAddress3:",poolAddress3);
+    getPriceFromSlot0(poolAddress3,tokenIn,tokenOut);
+
+    
+
+    
 
 }
 
