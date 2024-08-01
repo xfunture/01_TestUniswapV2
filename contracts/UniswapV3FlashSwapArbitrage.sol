@@ -25,6 +25,39 @@ contract UniswapV3FlashSwapArbitrage{
         owner = msg.sender;
     }
 
+    function flashSwap(
+        address pool0,
+        uint24 fee1,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) external {
+        bool zeroForOne = tokenIn < tokenOut;
+        // 0 -> 1 => sqrt price decrease
+        // 1 -> 0 => sqrt price increase
+        uint160 sqrtPriceLimit96 = 
+        zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1;
+        bytes memory data = abi.encode(
+            msg.sender,
+            pool0,
+            fee1,
+            tokenIn,
+            tokenOut,
+            amountIn,
+            zeroForOne
+        );
+
+        IUniswapV3Pool(pool0).swap(
+            {
+                recipient:address(this),
+                zeroForOne:zeroForOne,
+                amountSpecified:int256(amountIn),
+                sqrtPriceLimitX96:sqrtPriceLimit96,
+                data:data
+            }
+        );
+    }
+
 
     function _swap(
         address tokenIn,
@@ -51,6 +84,43 @@ contract UniswapV3FlashSwapArbitrage{
 
 
 
+    }
+
+    function uniswapV3SwapCallback(
+        int256 amount0,
+        int256 amount1,
+        bytes calldata data
+    ) external{
+        // Decode data
+        (
+            address caller,
+            address pool0,
+            uint24 fee1,
+            address tokenIn,
+            address tokenOut,
+            uint256 amountIn,
+            bool zeroForOne
+        ) = abi.decode(
+            data,(address, address,uint24,address,address,uint256,bool)
+        );
+
+        uint256 amountOut = zeroForOne ? uint256(-amount1):uint256(-amount0);
+
+        // pool0 -> tokenIn -> tokenOut( amountOut)
+        // swap on pool1 (swap tokenOut -> tokenIn)
+        uint256 buyBackAmount = _swap({
+            tokenIn:tokenOut,
+            tokenOut:tokenIn,
+            fee:fee1,
+            amountIn:amountOut,
+            amountOutMin:amountIn
+        });
+
+        // Repay pool0
+        uint256 profit = buyBackAmount - amountIn;
+        require(profit > 0,"profit =0");
+        IERC20(tokenIn).transfer(pool0,amountIn);
+        IERC20(tokenIn).transfer(caller,profit);
     }
 
 
