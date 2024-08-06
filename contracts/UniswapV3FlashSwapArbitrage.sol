@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-
+import "hardhat/console.sol";
 
 
 address constant SWAP_ROUTER_02 = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
@@ -47,6 +47,14 @@ contract UniswapV3FlashSwapArbitrage{
             zeroForOne
         );
 
+        console.log("\n\nflashswap function");
+        console.log("zeroforone:",zeroForOne);
+        console.log("amountIn:",amountIn);
+        console.log("tokenIn:",tokenIn);
+        console.log("tokenOut:",tokenOut);
+
+        //swap DAI to WETH on pool0
+        // pool0.swap 函数会调用回调函数uniswapV3SwapCallback
         IUniswapV3Pool(pool0).swap(
             {
                 recipient:address(this),
@@ -56,6 +64,11 @@ contract UniswapV3FlashSwapArbitrage{
                 data:data
             }
         );
+
+     
+
+
+
     }
 
 
@@ -66,6 +79,12 @@ contract UniswapV3FlashSwapArbitrage{
         uint256 amountIn,
         uint256 amountOutMin
     ) private returns(uint256 amountOut){
+
+        console.log("\n\narbitrage _swap function ExactInputSingleParams begin");
+        console.log("tokenIn:",tokenIn);
+        console.log("tokenOut:",tokenOut);
+        console.log("amountIn:",amountIn);
+        console.log("amountOutMin:",amountOutMin);
 
         IERC20(tokenIn).approve(address(router),amountIn);
         ISwapRouter02.ExactInputSingleParams memory params = ISwapRouter02.ExactInputSingleParams(
@@ -81,6 +100,7 @@ contract UniswapV3FlashSwapArbitrage{
         );
 
         amountOut = router.exactInputSingle(params);
+        console.log("arbitrage _swap function end");
 
 
 
@@ -104,10 +124,12 @@ contract UniswapV3FlashSwapArbitrage{
             data,(address, address,uint24,address,address,uint256,bool)
         );
 
+        //amountOut WETH的数量，指的是通过pool0 DAI 兑换到的WETH的数量
         uint256 amountOut = zeroForOne ? uint256(-amount1):uint256(-amount0);
-
+    
         // pool0 -> tokenIn -> tokenOut( amountOut)
         // swap on pool1 (swap tokenOut -> tokenIn)
+        // swap WETH to DAI on pool1
         uint256 buyBackAmount = _swap({
             tokenIn:tokenOut,
             tokenOut:tokenIn,
@@ -117,10 +139,22 @@ contract UniswapV3FlashSwapArbitrage{
         });
 
         // Repay pool0
+        console.log("\n\nuniswapV3SwapCallback function");
+        console.log("zeroForOne:",zeroForOne);
+        console.log("buyAmount:",buyBackAmount);
+        console.log("amountIn:",amountIn);
+        console.log("amountOut:",amountOut);
         uint256 profit = buyBackAmount - amountIn;
+        console.log("profit:",profit);
         require(profit > 0,"profit =0");
         IERC20(tokenIn).transfer(pool0,amountIn);
         IERC20(tokenIn).transfer(caller,profit);
+
+        
+        uint256 daiBalance = IERC20(tokenIn).balanceOf(address(this));
+        uint256 wethBalace = IERC20(tokenOut).balanceOf(address(this));
+        console.log("uniswapV3SwapCallback dai balance:",daiBalance);
+        console.log("uniswapV3SwapCallback weth balance:",wethBalace);
     }
 
 

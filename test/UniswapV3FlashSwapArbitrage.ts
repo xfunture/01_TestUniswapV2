@@ -44,11 +44,13 @@ describe("UniswapV3FlashSwapArbitrate Test",function(){
     describe("excute Arbitrage",async function(){
         it("run arbitrage",async function(){
         const {uniswapv3SwapFlashSwapArbitrate,uniswapv3Swap,owner,addr1,addr2 } = await loadFixture(deployUniswapVFlashSwapArbitrageFixture)
-           
+        
+            
+
             const tokenIn = WETH_TOKEN;
             const tokenOut = DAI_TOKEN;
             const inputAmount = 0.4;
-            const tradeAmount = 0.2
+            const tradeAmount = 0.4
             const transferAmount = ethers.parseUnits(inputAmount.toString(),tokenIn.decimals);
             const amountIn = ethers.parseUnits(tradeAmount.toString(),tokenIn.decimals);
             const outputAmount = 500;
@@ -58,7 +60,7 @@ describe("UniswapV3FlashSwapArbitrate Test",function(){
             // const output = await uniswapv3Swap.swapExactOutputSingle(tokenIn.address,tokenOut.address,0,amountOut);
 
 
-            //---------------------------wrapEther-------------------------------------
+            //------------------------------------------------wrapEther---------------------------------------------------------------------
             let contractwethBalance = await wethContract.balanceOf(contractCddress);
             console.log(`\n\tbefore wrapEther contract wethBalance: ${ethers.formatEther(contractwethBalance)}`);
 
@@ -69,13 +71,52 @@ describe("UniswapV3FlashSwapArbitrate Test",function(){
             expect(contractwethBalance).to.equal(transferAmount);
 
 
-            
+           
+            //-------------------------------------------------Buy DAI-------------------------------------------------------------------
+            const tokenOutContract = new ethers.Contract(tokenOut.address,ERC20_ABI,wallet);
+            let tokenOutBalance = await tokenOutContract.balanceOf(owner);
+            console.log(`\tbefore buy tokenOut:${tokenOut.symbol} balance:${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
             await uniswapv3Swap.swapExactInputSingle(
                     tokenIn.address,
                     tokenOut.address,
                     amountIn,
                     poolFee
+            );
+            
+
+            tokenOutBalance = await tokenOutContract.balanceOf(owner);
+            console.log(`\tafter buy tokenOut:${tokenOut.symbol} balance:${ethers.formatUnits(tokenOutBalance,tokenOut.decimals)}`);
+
+            //--------------------------Transfer DAI to UniswapV3FlashSwapArbitrage contract-------------------------------------------------------
+            const arbitrageContractAddress = await uniswapv3SwapFlashSwapArbitrate.getAddress();
+            let arbitrageTokenOutBalance = await tokenOutContract.balanceOf(arbitrageContractAddress);
+            console.log(`\tbefore transfer arbitrage contract tokenOut:${tokenOut.symbol} balance:${ethers.formatUnits(arbitrageTokenOutBalance,tokenOut.decimals)}`);
+            let tx = await tokenOutContract.transfer(arbitrageContractAddress,tokenOutBalance);
+            await tx.wait();
+            arbitrageTokenOutBalance = await tokenOutContract.balanceOf(arbitrageContractAddress);
+            console.log(`\tafter transfer arbitrage contract tokenOut:${tokenOut.symbol} balance:${ethers.formatUnits(arbitrageTokenOutBalance,tokenOut.decimals)}`);
+
+            //-------------------------------------------------execute arbitrage------------------------------------------------------------------
+            const pool0 = "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8";
+            const pool1 = "0x60594a405d53811d3BC4766596EFD80fd545A270";
+            const fee0 = 3000;
+            const fee1 = 500;
+            const arbitrageInputAmount = 500;
+            const arbitrageAmountIn = ethers.parseUnits(arbitrageInputAmount.toString(),tokenOut.decimals);
+            
+
+            
+            await uniswapv3SwapFlashSwapArbitrate.flashSwap(
+                pool0,                                          // address pool0,
+                fee1,                                           // uint24 fee1,
+                DAI_TOKEN.address,                              // address tokenIn,
+                WETH_TOKEN.address,                             // address tokenOut,
+                arbitrageAmountIn                        // uint256 amountIn
             )
+
+
+            
+
 
 
 

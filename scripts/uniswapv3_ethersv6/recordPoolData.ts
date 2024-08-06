@@ -7,7 +7,7 @@ import { getOutputQuote,TokenTrade} from './lib/trading';
 import { Trade,SwapRouter,SwapQuoter,Pool,Route,SwapOptions, FeeAmount } from '@uniswap/v3-sdk';
 import { Currency,CurrencyAmount,Percent,Token,TradeType } from '@uniswap/sdk-core';
 import { createDeadLine, fromReadableAmount, priceFromSqrtPriceX96, priceFromTick } from './lib/utils';
-import { getNonceFromBlock, getNonceLocal, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
+import { getNonceFromBlock, getNonceLocal, getProvider, getWalletAddress, sendTransaction ,wallet} from './lib/providers';
 import { DAI_TOKEN, ERC20_ABI, QUOTER_CONTRACT_ADDRESS, UNI_TOKEN, UNISWAPV3_ROUTER2_ADDRESS, UNISWAPV3_ROUTER_ADDRESS, USDC_TOKEN, WETH_TOKEN } from './lib/constant';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json';
@@ -20,10 +20,6 @@ import { StateMutability } from '../../typechain-types/common';
 import moment from 'moment';
 import { CurrentConfig } from './config';
 
-export function getProvider():ethers.JsonRpcApiProvider{
-    let rpc_url = "https://eth-mainnet.g.alchemy.com/v2/cuT7e3X1csYwxDNQOI-l0QibriBl2CAC";
-    return new ethers.JsonRpcProvider(rpc_url);
-}
 
 
 const provider = getProvider();
