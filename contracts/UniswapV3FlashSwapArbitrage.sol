@@ -140,6 +140,7 @@ contract UniswapV3FlashSwapArbitrage{
 
         // Repay pool0
         console.log("\n\nuniswapV3SwapCallback function");
+        console.log("caller:",caller);
         console.log("zeroForOne:",zeroForOne);
         console.log("buyAmount:",buyBackAmount);
         console.log("amountIn:",amountIn);
