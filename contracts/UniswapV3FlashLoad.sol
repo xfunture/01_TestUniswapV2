@@ -104,7 +104,7 @@ contract UniswapV3FlashLoad{
             token1.transferFrom(decoded.caller,address(this),fee1);
         }
 
-        // 偿还债务，借款金额加手利息
+        // 偿还债务，借款金额加利息
         if(fee0 > 0){
             token0.transfer(address(pool),decoded.amount0 + fee0);
         }
