@@ -44,7 +44,8 @@ export enum TransactionState{
 export function getProvider():ethers.JsonRpcApiProvider{
     let rpc_url = CurrentConfig.rpc.local;
     // console.log("getProvider:",rpc_url);
-    return new ethers.JsonRpcProvider(rpc_url);
+    return new ethers.JsonRpcProvider(rpc_url,1);
+    // return new ethers.AlchemyProvider(1,rpc_url);
 }
 
 export function getMainnetProvider():ethers.JsonRpcProvider{
